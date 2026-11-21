@@ -18,6 +18,14 @@ Open `index.html` in a browser. No build step and no install. Everything runs lo
 - **Socket bases**: picks the best socket base per slot for each build (one Prismatic per maxed skill, colored stat jewels for the rest; extra Prismatics and off-color sockets count as waste). Line fodder and socket bases are separate pools: once the lines make 18/18, transfer them onto the bases with Orbs.
 - **Import / Export**: JSON (inventory + settings) or CSV (`slot,line1,line2,line3,socket1,socket2,socket3,note`; full skill names or codes).
 
+## Safe to use while MapleStory is running?
+
+The tool is a plain web page. It never reads game memory, watches your screen or keyboard, or sends input to the game; it only sees images you choose to give it. Take screenshots with the game's own screenshot key or Windows Snipping Tool (Win+Shift+S, then paste), not with overlay/recording tools that inject into the game client.
+
+## Browsers
+
+Works in current Firefox, Chrome and Edge. In Firefox, click the paste box on the Scan tab before pressing Ctrl+V.
+
 ## Builds
 
 | Build | Lines | Prismatics |

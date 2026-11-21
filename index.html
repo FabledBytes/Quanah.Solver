@@ -238,6 +238,8 @@ tr.leader td { background: var(--accent-soft); }
 .drop { border: 2px dashed var(--line-strong); border-radius: var(--r); padding: 26px 16px; display: grid; justify-items: center; gap: 10px; text-align: center; background: var(--surface-2); color: var(--muted); }
 .drop b { color: var(--fg); }
 .drop.over { border-color: var(--accent); background: var(--accent-soft); }
+.paste-box { width: 190px; min-height: 0; height: 36px; resize: none; overflow: hidden; font: inherit; font-size: .88rem; text-align: center; padding: 7px 10px; }
+.safety summary { cursor: pointer; font-size: .86rem; color: var(--accent); font-weight: 500; }
 .thumbs { display: flex; flex-wrap: wrap; gap: 10px; }
 .thumbs:empty { display: none; }
 .thumb { position: relative; margin: 0; width: 150px; border: 1px solid var(--line); border-radius: var(--r-sm); overflow: hidden; background: var(--surface-2); }
@@ -386,10 +388,21 @@ details.raw pre { font: .74rem/1.4 var(--font-mono); white-space: pre-wrap; max-
         <span class="engine" id="scan-engine"></span>
       </div>
       <div class="drop" id="drop" tabindex="0">
-        <p><b>Drop screenshots here</b> or paste one with Ctrl+V (Cmd+V on Mac)</p>
-        <label class="btn" for="scan-file">Choose images</label>
+        <p><b>Drop screenshots here</b>, choose files, or click the paste box and press Ctrl+V</p>
+        <div class="row" style="justify-content:center">
+          <label class="btn" for="scan-file">Choose images</label>
+          <textarea id="paste-box" class="paste-box" rows="1" placeholder="Click here, then Ctrl+V" aria-label="Paste a screenshot here" spellcheck="false"></textarea>
+        </div>
         <input type="file" id="scan-file" accept="image/png,image/jpeg,image/webp,image/gif" multiple hidden>
       </div>
+      <details class="safety">
+        <summary>Is this safe to use while MapleStory is running?</summary>
+        <div class="small muted" style="display:grid;gap:6px;margin-top:8px;max-width:75ch">
+          <p>This page never touches the game. It does not read game memory, does not watch your screen or keyboard, and does not send input to the game. It only sees the images you give it, the same as uploading a picture anywhere else.</p>
+          <p>Take screenshots with tools that do not hook into the game: the game's own screenshot key (Print Screen), or Windows Snipping Tool (Win+Shift+S, then paste here). If a capture comes out black, switch the game to windowed or borderless mode. Avoid third-party overlay or recording tools that inject into the game client.</p>
+          <p>Nothing here automates gameplay, so it is no different from a spreadsheet you fill in yourself.</p>
+        </div>
+      </details>
       <div class="thumbs" id="thumbs"></div>
       <div class="row">
         <button class="btn primary" data-act="scan-read" id="scan-read" disabled>Read screenshots</button>
@@ -1341,9 +1354,21 @@ document.addEventListener('drop', (e) => {
   const n = addScanFiles(e.dataTransfer.files);
   if (!n) setScanStatus('Only image files can be read.', 'err');
 });
+function clipboardImages(cd) {
+  if (!cd) return [];
+  let files = [...(cd.files || [])].filter((f) => /^image\//.test(f.type));
+  if (!files.length && cd.items) { // some browsers only expose pasted bitmaps as items
+    files = [...cd.items].filter((it) => it.kind === 'file' && /^image\//.test(it.type)).map((it) => it.getAsFile()).filter(Boolean);
+  }
+  return files.map((f, i) => (f.name ? f : new File([f], `Pasted screenshot ${i + 1}.png`, { type: f.type || 'image/png' })));
+}
+$('#paste-box').addEventListener('input', (e) => { e.target.value = ''; });
 document.addEventListener('paste', (e) => {
-  const files = [...((e.clipboardData && e.clipboardData.files) || [])].filter((f) => /^image\//.test(f.type));
-  if (!files.length) return;
+  const files = clipboardImages(e.clipboardData);
+  if (!files.length) {
+    if (e.target && e.target.id === 'paste-box') setScanStatus('The clipboard has no image. Copy a screenshot first (Win+Shift+S), then paste.', 'err');
+    return;
+  }
   e.preventDefault();
   addScanFiles(files);
   if (activeTab !== 'scan') showTab('scan');

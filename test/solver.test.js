@@ -128,6 +128,34 @@ test('import parses CSV with names and aliases, and JSON round-trips', () => {
   assert.equal(json.settings.mage, true);
 });
 
+test('OCR line matching tolerates typos and ignores descriptions', () => {
+  assert.deepEqual(Q.ocrLineSkills('Dimensional Leap Lv. 1'), ['DL']);
+  assert.deepEqual(Q.ocrLineSkills('Dimensiona1 Lcap Lv.1'), ['DL']);
+  assert.deepEqual(Q.ocrLineSkills('Critical Damage'), ['CD']);
+  assert.deepEqual(Q.ocrLineSkills('Damage Lv.1'), ['DMG']);
+  assert.deepEqual(Q.ocrLineSkills('M.ATT Enhancement'), ['MATT']);
+  assert.deepEqual(Q.ocrLineSkills('ATT Enhancement'), ['ATT']);
+  assert.deepEqual(Q.ocrLineSkills('Whlte Hole'), ['WH']);
+  assert.deepEqual(Q.ocrLineSkills('Pirate'), ['PIR']);
+  assert.deepEqual(Q.ocrLineSkills('Increases Critical Damage dealt to bosses by 10%'), []);
+  assert.deepEqual(Q.ocrLineSkills('Image quality'), []);
+});
+
+test('OCR text becomes pieces with slots, split on new slot names', () => {
+  const text = [
+    "Libae's Supercharged Gloves", 'Type: Gloves', 'Hologram Skill', 'White Hole Lv.1', 'Registry Lv.1', 'Thief Lv.1',
+    'Some description text that goes on and on about nothing in particular',
+    "Libae's Supercharged Cape", 'Dimensional Leap Lv.1', 'Critlcal Damage Lv.1',
+  ].join('\n');
+  const p = Q.parseOcrText(text);
+  assert.equal(p.length, 2);
+  assert.equal(p[0].slot, 'Gloves');
+  assert.deepEqual(p[0].lines, ['WH', 'REG', 'THF']);
+  assert.equal(p[1].slot, 'Cape');
+  assert.deepEqual(p[1].lines, ['DL', 'CD', '']);
+  assert.ok(p[1].warnings.some((w) => w.includes('2 skill lines')));
+});
+
 test('large inventory solves quickly', () => {
   let seed = 99;
   const rnd = () => ((seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648);

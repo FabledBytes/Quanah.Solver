@@ -598,6 +598,121 @@
     return { items, settings, skipped };
   }
 
+  /* ------------------------------------------------------------------ */
+  /* OCR text → pieces (used by the on-device screenshot reader)         */
+  /* ------------------------------------------------------------------ */
+
+  // Long names are fuzzy-matched inside the joined letters of a line; short ones per word.
+  const OCR_LONG = [
+    ['magicattackenhancement', 'MATT'], ['attackenhancement', 'ATT'], ['dimensionalleap', 'DL'],
+    ['criticaldamage', 'CD'], ['attenhancement', 'ATT'], ['whitehole', 'WH'],
+  ];
+  const OCR_SHORT = [
+    ['registry', 'REG'], ['magician', 'MAG'], ['warrior', 'WAR'], ['damage', 'DMG'], ['archer', 'ARC'],
+    ['bowman', 'ARC'], ['pirate', 'PIR'], ['thief', 'THF'], ['mage', 'MAG'],
+  ];
+  const OCR_STOP = new Set(['lv', 'lvl', 'level', 'skill', 'hologram', 'max']);
+  const OCR_SLOT_RE = /\b(hat|helmet|helm|top|overall|bottoms?|pants|gloves?|shoes?|boots|cape|cloak)\b/;
+
+  function editDistance(a, b) {
+    const m = a.length, n = b.length;
+    let prev = Array.from({ length: n + 1 }, (_, j) => j);
+    for (let i = 1; i <= m; i++) {
+      const cur = [i];
+      for (let j = 1; j <= n; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      prev = cur;
+    }
+    return prev[n];
+  }
+  /** Best approximate occurrence of pattern inside text: {dist, end} (end exclusive). */
+  function approxFind(pattern, text) {
+    const m = pattern.length, n = text.length;
+    let prev = new Array(n + 1).fill(0);
+    for (let i = 1; i <= m; i++) {
+      const cur = [i];
+      for (let j = 1; j <= n; j++) {
+        cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (pattern[i - 1] === text[j - 1] ? 0 : 1));
+      }
+      prev = cur;
+    }
+    let best = Infinity, end = 0;
+    for (let j = 0; j <= n; j++) if (prev[j] < best) { best = prev[j]; end = j; }
+    return { dist: best, end };
+  }
+
+  /** Skill keys found on one OCR line, in reading order ([] when the line isn't a skill line). */
+  function ocrLineSkills(line) {
+    const words = String(line).toLowerCase().replace(/[^a-z\s.]/g, ' ').split(/[\s.]+/).filter((w) => w && !OCR_STOP.has(w) && (w.length > 1 || w === 'm'));
+    if (!words.length) return [];
+    let joined = words.join('');
+    if (joined.length > 48) return []; // descriptions, not skill lines
+    const total = joined.length;
+    const found = [];
+    let covered = 0;
+    for (const [pat, key] of OCR_LONG) {
+      const tol = Math.min(3, Math.floor(pat.length / 6));
+      for (let guard = 0; guard < 3; guard++) {
+        const r = approxFind(pat, joined);
+        if (r.dist > tol) break;
+        let start = Math.max(0, r.end - pat.length);
+        let k = key;
+        if (key === 'ATT' && start > 0 && joined[start - 1] === 'm') { k = 'MATT'; start--; } // M.ATT vs ATT
+        found.push({ key: k, pos: start });
+        covered += r.end - start;
+        joined = joined.slice(0, start) + '#'.repeat(r.end - start) + joined.slice(r.end);
+      }
+    }
+    // Map each word to its range in the joined string to skip words already used by a long match.
+    let p = 0;
+    for (const w of words) {
+      const range = joined.slice(p, p + w.length);
+      const pos = p;
+      p += w.length;
+      if (range.includes('#')) continue;
+      for (const [pat, key] of OCR_SHORT) {
+        const tol = pat.length >= 6 ? 1 : 0;
+        if (Math.abs(w.length - pat.length) > tol) continue;
+        if (editDistance(w, pat) <= tol) { found.push({ key, pos }); covered += w.length; break; }
+      }
+    }
+    if (!found.length || covered / total < 0.6) return [];
+    return found.sort((a, b) => a.pos - b.pos).map((f) => f.key);
+  }
+
+  /**
+   * Turns raw OCR text from one screenshot into pieces. Slot words start a new piece once
+   * the current one already has a slot and skill lines; a 4th skill line also starts one.
+   */
+  function parseOcrText(text) {
+    const pieces = [];
+    let cur = null;
+    const start = (slot) => { cur = { slot: slot || '', lines: [], sockets: ['', '', ''], warnings: [] }; pieces.push(cur); };
+    for (const raw of String(text || '').split(/\r?\n/)) {
+      const lower = raw.toLowerCase();
+      const sm = lower.match(OCR_SLOT_RE);
+      const skills = ocrLineSkills(raw);
+      if (sm && !skills.length) {
+        const slot = parseSlot(sm[1]);
+        if (!cur) start(slot);
+        else if (!cur.slot) cur.slot = slot;
+        else if (cur.lines.length && (cur.slot !== slot || cur.lines.length >= 3)) start(slot);
+        else if (cur.slot !== slot && !cur.lines.length) cur.slot = slot;
+      }
+      for (const k of skills) {
+        if (!cur) start('');
+        if (cur.lines.length >= 3) { const s = cur.slot; start(s); cur.warnings.push('Continued from a piece with more than 3 lines'); }
+        cur.lines.push(k);
+      }
+    }
+    const out = pieces.filter((pc) => pc.lines.length);
+    for (const pc of out) {
+      if (!pc.slot) pc.warnings.push('Slot not found');
+      if (pc.lines.length < 3) pc.warnings.push(`Only ${pc.lines.length} skill line${pc.lines.length === 1 ? '' : 's'} read`);
+      pc.lines = padLines(pc.lines);
+    }
+    return out;
+  }
+
   function toCSV(items) {
     const esc = (v) => (/[",\n;]/.test(v) ? `"${String(v).replace(/"/g, '""')}"` : String(v));
     const name = (k) => (SKILL_BY_KEY[k] ? SKILL_BY_KEY[k].name : '');
@@ -614,5 +729,6 @@
     resolveTarget, scoreCounts, deficits, countLines, buildSlotGroups, search, analyzeCombo,
     buildWishlist, solveSockets, solve, checkAll,
     parseSkill, parseSocket, parseSlot, matchSkill, matchSocket, normalizeItem, parseImport, parseCSV, toCSV,
+    parseOcrText, ocrLineSkills,
   };
 });

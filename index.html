@@ -232,6 +232,32 @@ tr.leader td { background: var(--accent-soft); }
 .colors { display: flex; flex-wrap: wrap; gap: 6px 14px; }
 .colors label { display: inline-flex; align-items: center; gap: 6px; font-size: .9rem; }
 
+/* Scan */
+.engine { font-size: .8rem; color: var(--muted); border: 1px solid var(--line); border-radius: 99px; padding: 3px 10px; background: var(--surface-2); }
+.engine b { color: var(--fg); font-weight: 600; }
+.drop { border: 2px dashed var(--line-strong); border-radius: var(--r); padding: 26px 16px; display: grid; justify-items: center; gap: 10px; text-align: center; background: var(--surface-2); color: var(--muted); }
+.drop b { color: var(--fg); }
+.drop.over { border-color: var(--accent); background: var(--accent-soft); }
+.thumbs { display: flex; flex-wrap: wrap; gap: 10px; }
+.thumbs:empty { display: none; }
+.thumb { position: relative; margin: 0; width: 150px; border: 1px solid var(--line); border-radius: var(--r-sm); overflow: hidden; background: var(--surface-2); }
+.thumb img { display: block; width: 100%; height: 96px; object-fit: cover; object-position: top; }
+.thumb figcaption { font-size: .74rem; padding: 4px 7px; display: flex; justify-content: space-between; gap: 6px; }
+.thumb .st-done { color: var(--ok); } .thumb .st-error { color: var(--bad); } .thumb .st-reading { color: var(--accent); }
+.thumb button { position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; border-radius: 50%; border: 0; cursor: pointer; background: var(--surface); color: var(--fg); box-shadow: var(--shadow); line-height: 1; }
+.scan-rows { display: grid; gap: 8px; }
+.scan-row { display: grid; grid-template-columns: auto 64px 110px minmax(0, 1.6fr) minmax(0, 1.2fr) auto; gap: 8px 10px; align-items: center; padding: 8px; border: 1px solid var(--line); border-radius: var(--r-sm); }
+.scan-row.off { opacity: .55; }
+.scan-row.bad { border-color: var(--warn); }
+.scan-row .mini { width: 64px; height: 40px; object-fit: cover; object-position: top; border-radius: 4px; border: 1px solid var(--line); }
+.scan-row > select { min-width: 0; }
+.scan-row select { width: 100%; font-size: .84rem; padding: 5px 6px; }
+.scan-row .warn { grid-column: 3 / -1; font-size: .78rem; color: var(--warn); }
+.scan-row .warn:empty { display: none; }
+.scan-row input[type="checkbox"] { width: 18px; height: 18px; }
+details.raw summary { cursor: pointer; font-size: .78rem; color: var(--muted); }
+details.raw pre { font: .74rem/1.4 var(--font-mono); white-space: pre-wrap; max-height: 200px; overflow: auto; background: var(--surface-2); padding: 8px; border-radius: 6px; }
+
 /* Data */
 .data-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 18px; }
 .msg { font-size: .86rem; }
@@ -253,6 +279,9 @@ tr.leader td { background: var(--accent-soft); }
   .item .jewels { grid-column: 2; }
   .item .acts { grid-column: 3; grid-row: 1; }
   .seg { grid-template-columns: repeat(3, 1fr); }
+  .scan-row { grid-template-columns: auto 64px minmax(0, 1fr); }
+  .scan-row .three, .scan-row .warn { grid-column: 1 / -1; }
+  .scan-row > button { grid-column: 3; grid-row: 1; justify-self: end; }
 }
 @media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 3s; } }
 </style>
@@ -278,6 +307,7 @@ tr.leader td { background: var(--accent-soft); }
     </div>
     <nav class="tabs" role="tablist" aria-label="Sections">
       <button class="tab" role="tab" data-tab="inventory" id="tab-inventory">Inventory <span class="badge" id="badge-items">0</span></button>
+      <button class="tab" role="tab" data-tab="scan" id="tab-scan">Scan screenshots</button>
       <button class="tab" role="tab" data-tab="solve" id="tab-solve">Solve</button>
       <button class="tab" role="tab" data-tab="compare" id="tab-compare">Check all presets</button>
       <button class="tab" role="tab" data-tab="sockets" id="tab-sockets">Socket bases</button>
@@ -332,6 +362,7 @@ tr.leader td { background: var(--accent-soft); }
           <button type="submit" class="btn primary" id="form-submit">Add piece</button>
           <span class="hint" id="form-msg"></span>
         </div>
+        <p class="hint">Have screenshots? <a href="#scan" data-act="goto" data-tab="scan">Scan them instead</a> and only check the result.</p>
       </form>
 
       <div class="panel" style="min-width:0">
@@ -342,6 +373,32 @@ tr.leader td { background: var(--accent-soft); }
         <div id="inv-list"></div>
       </div>
     </div>
+  </section>
+
+  <!-- SCAN -->
+  <section class="view" id="view-scan" hidden>
+    <div class="panel" style="display:grid;gap:14px">
+      <div class="panel-head" style="margin-bottom:0">
+        <div>
+          <h2>Add pieces from screenshots</h2>
+          <p class="muted small" style="max-width:70ch">Take a screenshot of each item tooltip (one or several per image is fine). The skill lines are read for you, then you check them here before anything goes into your inventory.</p>
+        </div>
+        <span class="engine" id="scan-engine"></span>
+      </div>
+      <div class="drop" id="drop" tabindex="0">
+        <p><b>Drop screenshots here</b> or paste one with Ctrl+V (Cmd+V on Mac)</p>
+        <label class="btn" for="scan-file">Choose images</label>
+        <input type="file" id="scan-file" accept="image/png,image/jpeg,image/webp,image/gif" multiple hidden>
+      </div>
+      <div class="thumbs" id="thumbs"></div>
+      <div class="row">
+        <button class="btn primary" data-act="scan-read" id="scan-read" disabled>Read screenshots</button>
+        <button class="btn" data-act="scan-stop" id="scan-stop" hidden>Stop</button>
+        <button class="btn ghost" data-act="scan-clear" id="scan-clear" hidden>Remove all screenshots</button>
+        <span class="msg" id="scan-status" role="status"></span>
+      </div>
+    </div>
+    <div class="panel" id="scan-review" hidden></div>
   </section>
 
   <!-- SOLVE -->
@@ -599,7 +656,7 @@ $('#set-mage').addEventListener('change', (e) => { state.settings.mage = e.targe
 $('#set-own').addEventListener('change', (e) => { state.settings.ownClass = e.target.value; renderPresetList(); changed(); });
 
 /* ---------------- Tabs ---------------- */
-const TABS = ['inventory', 'solve', 'compare', 'sockets', 'data'];
+const TABS = ['inventory', 'scan', 'solve', 'compare', 'sockets', 'data'];
 let activeTab = 'inventory';
 function showTab(name, { push = true } = {}) {
   if (!TABS.includes(name)) name = 'inventory';
@@ -617,10 +674,18 @@ $$('.tab').forEach((b) => b.addEventListener('click', () => showTab(b.dataset.ta
 window.addEventListener('hashchange', () => showTab(location.hash.slice(1), { push: false }));
 function refreshActive() {
   if (activeTab === 'inventory') renderInventory();
+  else if (activeTab === 'scan') renderScan();
   else if (activeTab === 'solve') { renderTarget(); solveNow(); }
   else if (activeTab === 'compare') compareNow();
   else if (activeTab === 'sockets') renderSockets();
   else if (activeTab === 'data') renderExport();
+}
+
+/** The first real piece replaces the sample inventory. Returns true when the sample was cleared. */
+function leaveSample() {
+  if (!state.sample) return false;
+  state.items = []; state.nextId = 1; state.sample = false;
+  return true;
 }
 
 /* ---------------- Inventory: entry form ---------------- */
@@ -701,17 +766,18 @@ function submitForm() {
     return;
   }
   $('#form-msg').textContent = '';
-  if (state.sample) state.sample = false;
   if (form.editingId != null) {
+    state.sample = false;
     const it = state.items.find((x) => x.id === form.editingId);
     if (it) Object.assign(it, data);
     toast(`Saved ${data.slot} #${form.editingId}`);
     changed({ resolve: false });
     resetForm();
   } else {
+    const cleared = leaveSample();
     const it = Object.assign({ id: state.nextId++ }, data);
     state.items.push(it);
-    toast(`Added ${data.slot} #${it.id}`);
+    toast(cleared ? `Sample cleared. Added ${data.slot} #${it.id}` : `Added ${data.slot} #${it.id}`);
     changed({ resolve: false });
     resetForm();
   }
@@ -986,7 +1052,7 @@ function doImport() {
   try {
     const r = Q.parseImport($('#import-text').value);
     const mode = $('input[name="imp-mode"]:checked').value;
-    if (mode === 'replace') { state.items = []; state.nextId = 1; }
+    if (mode === 'replace') { state.items = []; state.nextId = 1; } else leaveSample();
     for (const it of r.items) { it.id = state.nextId++; state.items.push(it); }
     if (r.settings) state.settings = Object.assign(defaultSettings(), state.settings, r.settings);
     state.sample = false;
@@ -1015,6 +1081,274 @@ function download() {
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
+
+/* ---------------- Screenshot scanning ---------------- */
+const TESSERACT_URL = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
+const scan = { images: [], pieces: [], busy: false, stop: false, ctl: null, engine: 'checking', sample: null, batch: 4, nextImg: 1, nextPiece: 1 };
+(async () => {
+  try {
+    if (window.claude && typeof window.claude.use === 'function') {
+      const s = await window.claude.use('sample');
+      if (s) {
+        const lim = await s.limits().catch(() => null);
+        if (lim && lim.images) { scan.sample = s; scan.batch = Math.max(1, Math.min(4, lim.images.maxCount || 1)); }
+      }
+    }
+  } catch (e) { /* no Claude here */ }
+  scan.engine = scan.sample ? 'claude' : 'ocr';
+  if (activeTab === 'scan') renderScan();
+})();
+
+function addScanFiles(files) {
+  const imgs = [...files].filter((f) => f && /^image\//.test(f.type));
+  for (const f of imgs) {
+    scan.images.push({ id: scan.nextImg++, blob: f, url: URL.createObjectURL(f), name: f.name || 'Pasted screenshot', status: 'new', note: '' });
+  }
+  if (imgs.length) renderScan();
+  return imgs.length;
+}
+function imgById(id) { return scan.images.find((i) => i.id === id); }
+function samePiece(a, b) {
+  return a.slot === b.slot && a.lines.join() === b.lines.join() && a.sockets.join() === b.sockets.join();
+}
+function addScanPieces(img, list) {
+  for (const raw of list) {
+    const it = Q.normalizeItem(raw, 0);
+    const warnings = (raw.warnings || []).slice();
+    if (raw.note) warnings.push(String(raw.note).slice(0, 160));
+    if (raw.confidence === 'low') warnings.push('Claude was unsure about this one');
+    const dup = state.sample ? null : state.items.find((x) => samePiece(x, it));
+    if (dup) warnings.push(`Looks the same as ${dup.slot} #${dup.id} already in your inventory`);
+    scan.pieces.push({
+      pid: scan.nextPiece++, imgId: img.id, slot: it.slot, lines: it.lines, sockets: it.sockets,
+      include: !!it.slot && it.lines.some(Boolean) && !dup, warnings,
+    });
+  }
+}
+
+const SCAN_CODES = 'DL = Dimensional Leap, WH = White Hole, REG = Registry, ATT = ATT Enhancement, MATT = M.ATT (Magic ATT) Enhancement, CD = Critical Damage, DMG = Damage, WAR = Warrior, MAG = Mage / Magician, ARC = Archer / Bowman, THF = Thief, PIR = Pirate, OTHER = any other Hologram skill, "" = no line or unreadable';
+function scanPrompt(n) {
+  return `These ${n} image${n === 1 ? ' is a screenshot' : 's are screenshots'} from MapleStory, Event World: Quanah. They show tooltips of Libae's Supercharged Equipment armor. The armor slots are Hat, Top, Bottom, Gloves, Shoes and Cape. Each armor piece has up to 3 Hologram Skill lines and 3 jewel sockets.
+
+For every armor piece you can see, report:
+- image: the 1-based number of the screenshot it appears in, in the order given
+- slot: Hat, Top, Bottom, Gloves, Shoes or Cape ("" if you cannot tell; an overall counts as Top, pants as Bottom, boots as Shoes)
+- lines: exactly 3 Hologram skill codes in the order shown. Codes: ${SCAN_CODES}
+- sockets: exactly 3 jewel sockets in order, each one of prismatic, red, green, gray, blue, purple, or "" when empty or not visible. A prismatic jewel is rainbow / multi-colored.
+- confidence: "high" or "low"
+- note: a few words about anything unclear, else ""
+
+Skip anything that is not one of the 6 armor slots (weapons, accessories, emblems). If an image shows an equipped-item comparison, report each tooltip separately. Do not guess lines you cannot read; use "".
+
+Reply with only a JSON array, for example:
+[{"image":1,"slot":"Gloves","lines":["DL","WH","CD"],"sockets":["prismatic","red","gray"],"confidence":"high","note":""}]
+If no armor piece is visible, reply [].`;
+}
+const SAMPLE_ERRORS = {
+  not_granted: 'Reading screenshots with Claude was not allowed for this page, so nothing was sent. You can still add pieces by hand on the Inventory tab.',
+  sampling_disabled: 'Claude is not available for this account, so screenshots can\'t be read here. Add pieces by hand on the Inventory tab.',
+  images_unavailable: 'Images can\'t be sent to Claude from this view. Add pieces by hand on the Inventory tab.',
+  rate_limited: 'Claude is busy or your usage limit was reached. Wait a bit, then press Read again.',
+  image_rejected: 'One of these images could not be read. Use a PNG or JPG screenshot under 20 MB.',
+  invalid_json: 'Claude\'s answer could not be read. Press Read again to retry.',
+  session_expired: 'Your Claude session expired. Sign in again, then press Read again.',
+  refused: 'Claude would not read these images. Try a tighter crop of just the tooltip.',
+  empty_completion: 'Claude returned nothing for these images. Try a tighter crop of just the tooltip.',
+};
+async function readWithClaude(todo) {
+  for (let i = 0; i < todo.length && !scan.stop; i += scan.batch) {
+    const batch = todo.slice(i, i + scan.batch);
+    batch.forEach((im) => { im.status = 'reading'; });
+    setScanStatus(`Reading ${i + 1}${batch.length > 1 ? `–${i + batch.length}` : ''} of ${todo.length} with Claude… this can take up to a minute.`);
+    renderThumbs();
+    scan.ctl = new AbortController();
+    try {
+      const res = await scan.sample.json(scanPrompt(batch.length), { images: batch.map((b) => b.blob), signal: scan.ctl.signal, cache: false });
+      const arr = Array.isArray(res) ? res : (res && Array.isArray(res.pieces) ? res.pieces : null);
+      if (!arr) throw { code: 'invalid_json' };
+      batch.forEach((im, k) => {
+        const mine = arr.filter((p) => p && (Number(p.image) === k + 1 || (batch.length === 1 && !p.image)));
+        addScanPieces(im, mine);
+        im.status = 'done';
+        im.note = mine.length ? `${mine.length} piece${mine.length === 1 ? '' : 's'}` : 'No armor found';
+      });
+    } catch (e) {
+      const code = (e && e.code) || 'upstream_error';
+      batch.forEach((im) => { im.status = code === 'cancelled' ? 'new' : 'error'; im.note = code === 'cancelled' ? '' : 'Not read'; });
+      if (code !== 'cancelled') { setScanStatus(SAMPLE_ERRORS[code] || 'Something went wrong while reading. Press Read again to retry.', 'err'); return false; }
+      return false;
+    } finally { scan.ctl = null; renderThumbs(); renderReview(); }
+  }
+  return true;
+}
+function loadTesseract() {
+  if (window.Tesseract) return Promise.resolve();
+  return new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = TESSERACT_URL;
+    s.onload = () => (window.Tesseract ? res() : rej(new Error('missing')));
+    s.onerror = () => rej(new Error('missing'));
+    document.head.appendChild(s);
+  });
+}
+async function ocrCanvas(blob) {
+  const bmp = await createImageBitmap(blob);
+  const scale = bmp.width < 1400 ? 2 : 1;
+  const c = document.createElement('canvas');
+  c.width = bmp.width * scale; c.height = bmp.height * scale;
+  const g = c.getContext('2d');
+  g.drawImage(bmp, 0, 0, c.width, c.height);
+  const d = g.getImageData(0, 0, c.width, c.height);
+  const px = d.data;
+  let sum = 0;
+  for (let i = 0; i < px.length; i += 4) { const y = 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2]; px[i] = px[i + 1] = px[i + 2] = y; sum += y; }
+  if (sum / (px.length / 4) < 128) for (let i = 0; i < px.length; i += 4) { px[i] = px[i + 1] = px[i + 2] = 255 - px[i]; } // light text on dark → invert
+  g.putImageData(d, 0, 0);
+  return c;
+}
+async function readWithOcr(todo) {
+  setScanStatus('Loading the on-device text reader (first time only, about 5 MB)…');
+  try { await loadTesseract(); } catch (e) {
+    setScanStatus('The on-device text reader could not be loaded. Check your internet connection and press Read again, or add pieces by hand.', 'err');
+    return false;
+  }
+  let worker;
+  try { worker = await window.Tesseract.createWorker('eng'); } catch (e) {
+    setScanStatus('The on-device text reader could not start here. Add pieces by hand on the Inventory tab.', 'err');
+    return false;
+  }
+  try {
+    for (let i = 0; i < todo.length && !scan.stop; i++) {
+      const im = todo[i];
+      im.status = 'reading';
+      setScanStatus(`Reading screenshot ${i + 1} of ${todo.length}…`);
+      renderThumbs();
+      try {
+        const { data } = await worker.recognize(await ocrCanvas(im.blob));
+        im.raw = data.text;
+        const found = Q.parseOcrText(data.text);
+        addScanPieces(im, found);
+        im.status = 'done';
+        im.note = found.length ? `${found.length} piece${found.length === 1 ? '' : 's'}` : 'No skill lines found';
+      } catch (e) { im.status = 'error'; im.note = 'Not read'; }
+      renderThumbs(); renderReview();
+    }
+  } finally { try { await worker.terminate(); } catch (e) { /* ignore */ } }
+  return true;
+}
+async function readScreens() {
+  const todo = scan.images.filter((i) => i.status === 'new' || i.status === 'error');
+  if (!todo.length || scan.busy) return;
+  scan.busy = true; scan.stop = false;
+  renderScanControls();
+  const before = scan.pieces.length;
+  const ok = scan.engine === 'claude' ? await readWithClaude(todo) : await readWithOcr(todo);
+  scan.busy = false;
+  const found = scan.pieces.length - before;
+  if (ok || found) setScanStatus(scan.stop ? `Stopped. Found ${found} piece${found === 1 ? '' : 's'} so far.` : `Found ${found} piece${found === 1 ? '' : 's'}. Check them below, then add them.`, found ? 'ok' : '');
+  renderScan();
+}
+function setScanStatus(text, kind) { const el = $('#scan-status'); el.textContent = text; el.className = `msg${kind ? ' ' + kind : ''}`; }
+function renderScanControls() {
+  const todo = scan.images.filter((i) => i.status === 'new' || i.status === 'error').length;
+  const btn = $('#scan-read');
+  btn.disabled = scan.busy || !todo || scan.engine === 'checking';
+  btn.textContent = scan.busy ? 'Reading…' : todo ? `Read ${todo} screenshot${todo === 1 ? '' : 's'}` : 'Read screenshots';
+  $('#scan-stop').hidden = !scan.busy;
+  $('#scan-clear').hidden = scan.busy || !scan.images.length;
+}
+function renderThumbs() {
+  const label = { new: 'Not read yet', reading: 'Reading…', done: '', error: 'Not read' };
+  $('#thumbs').innerHTML = scan.images.map((im) => `<figure class="thumb"><img src="${im.url}" alt="${esc(im.name)}">
+    <figcaption><span class="mono">#${im.id}</span><span class="st-${im.status}">${esc(im.note || label[im.status])}</span></figcaption>
+    ${scan.busy ? '' : `<button type="button" data-act="scan-remove" data-id="${im.id}" aria-label="Remove screenshot ${im.id}">×</button>`}</figure>`).join('');
+  renderScanControls();
+}
+function renderScan() {
+  const eng = $('#scan-engine');
+  eng.innerHTML = scan.engine === 'checking' ? 'Checking reader…'
+    : scan.engine === 'claude' ? '<b>Read by Claude</b> · lines and jewel colors'
+    : '<b>On-device text reader</b> · skill lines only';
+  eng.title = scan.engine === 'claude' ? 'Screenshots are sent to Claude on your own account when you press Read. You are asked once to allow it.' : 'Runs in your browser. Jewel socket colors are not detected; fill them in during review.';
+  renderThumbs();
+  renderReview();
+}
+function renderReview() {
+  const box = $('#scan-review');
+  if (!scan.pieces.length) { box.hidden = true; box.innerHTML = ''; return; }
+  box.hidden = false;
+  const n = scan.pieces.filter((p) => p.include).length;
+  const rows = scan.pieces.map((p) => {
+    const im = imgById(p.imgId);
+    const warn = [...p.warnings];
+    if (p.include && !p.slot) warn.unshift('Pick a slot before adding');
+    return `<div class="scan-row${p.include ? '' : ' off'}${p.include && !p.slot ? ' bad' : ''}" data-pid="${p.pid}">
+      <input type="checkbox" data-scan="include" ${p.include ? 'checked' : ''} aria-label="Add this piece">
+      ${im ? `<img class="mini" src="${im.url}" alt="Screenshot ${im.id}" title="Screenshot #${im.id}">` : '<span></span>'}
+      <select data-scan="slot" aria-label="Slot"><option value="">— slot —</option>${Q.SLOTS.map((s) => `<option value="${s}"${s === p.slot ? ' selected' : ''}>${s}</option>`).join('')}</select>
+      <div class="three">${[0, 1, 2].map((i) => `<select data-scan="line" data-i="${i}" aria-label="Skill line ${i + 1}">${skillOptions()}</select>`).join('')}</div>
+      <div class="three">${[0, 1, 2].map((i) => `<select data-scan="sock" data-i="${i}" aria-label="Socket ${i + 1}">${socketOptions()}</select>`).join('')}</div>
+      <button type="button" class="btn ghost" data-act="scan-drop" data-id="${p.pid}" aria-label="Discard this piece">Discard</button>
+      <div class="warn">${warn.map(esc).join(' · ')}</div>
+    </div>`;
+  }).join('');
+  const raws = scan.images.filter((i) => i.raw);
+  box.innerHTML = `<div class="panel-head"><div><h2>Check before adding</h2><p class="muted small">Fix anything that was misread. Unticked rows are skipped.</p></div>
+      <div class="row"><button class="btn primary" data-act="scan-add" ${n ? '' : 'disabled'}>Add ${n} piece${n === 1 ? '' : 's'} to inventory</button></div></div>
+    <div class="scan-rows">${rows}</div>
+    ${raws.length ? `<details class="raw" style="margin-top:12px"><summary>Show the raw text that was read</summary>${raws.map((i) => `<p class="small mono" style="margin-top:8px">Screenshot #${i.id}</p><pre>${esc(i.raw)}</pre>`).join('')}</details>` : ''}`;
+  for (const p of scan.pieces) {
+    const row = box.querySelector(`[data-pid="${p.pid}"]`);
+    row.querySelectorAll('[data-scan="line"]').forEach((sel) => { sel.value = p.lines[sel.dataset.i] || ''; });
+    row.querySelectorAll('[data-scan="sock"]').forEach((sel) => { sel.value = p.sockets[sel.dataset.i] || ''; });
+  }
+}
+$('#scan-review').addEventListener('change', (e) => {
+  const row = e.target.closest('[data-pid]');
+  if (!row) return;
+  const p = scan.pieces.find((x) => x.pid === Number(row.dataset.pid));
+  const kind = e.target.dataset.scan;
+  if (!p || !kind) return;
+  if (kind === 'include') p.include = e.target.checked;
+  else if (kind === 'slot') p.slot = e.target.value;
+  else if (kind === 'line') p.lines[e.target.dataset.i] = e.target.value;
+  else if (kind === 'sock') p.sockets[e.target.dataset.i] = e.target.value;
+  if (kind === 'include' || kind === 'slot') renderReview();
+});
+function addScannedToInventory() {
+  const chosen = scan.pieces.filter((p) => p.include);
+  const missing = chosen.filter((p) => !p.slot);
+  if (missing.length) { setScanStatus(`Pick a slot for ${missing.length} piece${missing.length === 1 ? '' : 's'} first, or untick ${missing.length === 1 ? 'it' : 'them'}.`, 'err'); renderReview(); return; }
+  if (!chosen.length) return;
+  const cleared = leaveSample();
+  for (const p of chosen) state.items.push({ id: state.nextId++, slot: p.slot, lines: p.lines.slice(), sockets: p.sockets.slice(), note: '' });
+  scan.pieces = scan.pieces.filter((p) => !p.include);
+  changed({ resolve: false });
+  setScanStatus(`${cleared ? 'Sample inventory cleared. ' : ''}Added ${chosen.length} piece${chosen.length === 1 ? '' : 's'} to your inventory.`, 'ok');
+  toast(`Added ${chosen.length} piece${chosen.length === 1 ? '' : 's'}`);
+  renderReview();
+}
+$('#scan-file').addEventListener('change', (e) => { addScanFiles(e.target.files || []); e.target.value = ''; });
+const drop = $('#drop');
+['dragenter', 'dragover'].forEach((t) => document.addEventListener(t, (e) => {
+  if (activeTab !== 'scan' || !e.dataTransfer || ![...e.dataTransfer.types].includes('Files')) return;
+  e.preventDefault(); drop.classList.add('over');
+}));
+['dragleave', 'drop'].forEach((t) => drop.addEventListener(t, () => drop.classList.remove('over')));
+document.addEventListener('drop', (e) => {
+  if (activeTab !== 'scan' || !e.dataTransfer || !e.dataTransfer.files.length) return;
+  e.preventDefault(); drop.classList.remove('over');
+  const n = addScanFiles(e.dataTransfer.files);
+  if (!n) setScanStatus('Only image files can be read.', 'err');
+});
+document.addEventListener('paste', (e) => {
+  const files = [...((e.clipboardData && e.clipboardData.files) || [])].filter((f) => /^image\//.test(f.type));
+  if (!files.length) return;
+  e.preventDefault();
+  addScanFiles(files);
+  if (activeTab !== 'scan') showTab('scan');
+  toast(`Pasted ${files.length} screenshot${files.length === 1 ? '' : 's'}`);
+});
 
 /* ---------------- Global actions ---------------- */
 document.addEventListener('click', (e) => {
@@ -1080,6 +1414,19 @@ document.addEventListener('click', (e) => {
     download();
   } else if (act === 'import') {
     doImport();
+  } else if (act === 'scan-read') {
+    readScreens();
+  } else if (act === 'scan-stop') {
+    scan.stop = true; if (scan.ctl) scan.ctl.abort(); setScanStatus('Stopping…');
+  } else if (act === 'scan-remove') {
+    const im = imgById(id);
+    if (im) { URL.revokeObjectURL(im.url); scan.images = scan.images.filter((x) => x !== im); scan.pieces = scan.pieces.filter((p) => p.imgId !== id); renderScan(); }
+  } else if (act === 'scan-clear') {
+    scan.images.forEach((im) => URL.revokeObjectURL(im.url)); scan.images = []; scan.pieces = []; setScanStatus(''); renderScan();
+  } else if (act === 'scan-drop') {
+    scan.pieces = scan.pieces.filter((p) => p.pid !== id); renderReview();
+  } else if (act === 'scan-add') {
+    addScannedToInventory();
   }
 });
 let lastDeleted = null;

@@ -7,6 +7,9 @@ Open `index.html` in a browser. No build step and no install. Everything runs lo
 ## What it does
 
 - **Inventory**: log each Hat, Top, Bottom, Gloves, Shoes and Cape with its 3 Hologram skill lines and (optionally) its 3 jewel sockets. Quick entry accepts shorthand such as `gloves dl wh cd p r g`.
+- **Scan screenshots**: drop, paste (Ctrl+V) or pick screenshots of item tooltips. They are read into pieces you check and correct before they are added.
+  - On the hosted claude.ai page, Claude reads the images on your own Claude account (you are asked once to allow it), including jewel socket colors.
+  - Opened locally, `index.html` uses on-device OCR ([Tesseract.js](https://github.com/naptha/tesseract.js), loaded from jsDelivr on first use, about 5 MB) and fuzzy-matches the skill names. Socket colors are not detected there; fill them in during review.
 - **Solve**: picks one piece per slot and scores the set against a target build (max 18). It lists:
   - exact 18/18 sets, including interchangeable item variants;
   - the closest partial matches, with every line marked as counting, over the gear cap, or not part of the build, plus what is missing and which slot to replace with which 3 lines;
@@ -38,4 +41,4 @@ npm test                 # solver unit tests (Node 18+), incl. a brute-force cro
 npm run build:artifact   # writes dist/ for hosting as a claude.ai artifact
 ```
 
-Files: `solver.js` (all game logic, browser + Node), `worker.js` (Web Worker wrapper), `index.html` (UI).
+Files: `solver.js` (all game logic incl. the OCR text parser, browser + Node), `worker.js` (Web Worker wrapper), `index.html` (UI).

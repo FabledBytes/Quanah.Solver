@@ -271,6 +271,15 @@ tr.leader td { background: var(--accent-soft); }
 details.raw summary { cursor: pointer; font-size: .78rem; color: var(--muted); }
 details.raw pre { font: .74rem/1.4 var(--font-mono); white-space: pre-wrap; max-height: 200px; overflow: auto; background: var(--surface-2); padding: 8px; border-radius: 6px; }
 
+/* Sync */
+.sync-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px 14px; }
+.sync-grid input { width: 100%; }
+.sync-pill { appearance: none; cursor: pointer; font-size: .8rem; font-weight: 500; border-radius: 99px; padding: 4px 11px; border: 1px solid var(--line); background: var(--surface-2); color: var(--muted); }
+.sync-pill.ok { background: var(--ok-soft); color: var(--ok); border-color: transparent; }
+.sync-pill.warn, .sync-pill.busy { background: var(--warn-soft); color: var(--warn); border-color: transparent; }
+.sync-pill.bad { background: var(--bad-soft); color: var(--bad); border-color: transparent; }
+#sync-msg:empty { display: none; }
+
 /* Data */
 .data-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 18px; }
 .msg { font-size: .86rem; }
@@ -315,6 +324,7 @@ details.raw pre { font: .74rem/1.4 var(--font-mono); white-space: pre-wrap; max-
         </div>
       </div>
       <div class="settings">
+        <button type="button" class="sync-pill off" id="sync-pill" data-act="goto" data-tab="data" hidden>GitHub sync off</button>
         <label title="Uses M.ATT Enhancement instead of ATT Enhancement in every build"><input type="checkbox" id="set-mage"> I play a Magician (M.ATT)</label>
         <label>Own class line
           <select id="set-own"></select>
@@ -518,6 +528,49 @@ details.raw pre { font: .74rem/1.4 var(--font-mono); white-space: pre-wrap; max-
 
   <!-- DATA -->
   <section class="view" id="view-data" hidden>
+    <div class="panel" style="display:grid;gap:12px">
+      <div class="panel-head" style="margin-bottom:0">
+        <div>
+          <h2>Sync with GitHub</h2>
+          <p class="muted small" style="max-width:70ch">Keeps your line fodder, socket bases and settings in a JSON file in your repository, so every machine you use sees the same data.</p>
+        </div>
+        <span class="engine" id="sync-state"></span>
+      </div>
+      <p class="small muted" id="sync-unavailable" hidden style="max-width:75ch">This claude.ai page can't connect to GitHub. Open the app from your repository instead (<span class="mono">index.html</span>, or GitHub Pages) to sync, or move data here with Export and Import below.</p>
+      <div id="sync-body" style="display:grid;gap:12px">
+        <div class="sync-grid">
+          <label class="field"><span>Repository</span><input type="text" id="sync-repo" spellcheck="false" placeholder="owner/name"></label>
+          <label class="field"><span>Branch</span><input type="text" id="sync-branch" spellcheck="false" placeholder="default branch"></label>
+          <label class="field"><span>File</span><input type="text" id="sync-path" spellcheck="false" placeholder="data/inventory.json"></label>
+          <label class="field"><span>GitHub token</span><input type="password" id="sync-token" autocomplete="off" spellcheck="false" placeholder="github_pat_…"></label>
+        </div>
+        <details class="safety">
+          <summary>How do I get a token?</summary>
+          <ol class="small muted" style="margin:8px 0 0;padding-left:20px;display:grid;gap:4px;max-width:75ch">
+            <li>Open <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">github.com/settings/personal-access-tokens/new</a> (a fine-grained token).</li>
+            <li>Under <b>Repository access</b>, choose <b>Only select repositories</b> and pick this repository.</li>
+            <li>Under <b>Permissions → Repository permissions</b>, set <b>Contents</b> to <b>Read and write</b>. Nothing else is needed.</li>
+            <li>Generate it, copy it, and paste it in the token field above. Do this once on every machine.</li>
+          </ol>
+          <p class="small muted" style="margin-top:6px;max-width:75ch">The token is kept only in this browser on this machine. It is never put in exports or in the synced file.</p>
+        </details>
+        <label class="small"><input type="checkbox" id="sync-auto"> Save to GitHub automatically a few seconds after each change</label>
+        <div class="banner" id="sync-conflict" hidden>
+          <p><b>Both this machine and GitHub have changes.</b> Choose which version to keep. The other one is replaced.</p>
+          <div class="row">
+            <button class="btn" data-act="sync-take-remote">Use the GitHub version</button>
+            <button class="btn danger" data-act="sync-overwrite">Keep this machine's version</button>
+          </div>
+        </div>
+        <div class="row">
+          <button class="btn primary" data-act="sync-save">Save to GitHub</button>
+          <button class="btn" data-act="sync-load">Load from GitHub</button>
+          <button class="btn ghost" data-act="sync-forget" id="sync-forget" hidden>Remove token from this machine</button>
+          <span class="hint" id="sync-when"></span>
+        </div>
+        <p class="msg" id="sync-msg" role="status"></p>
+      </div>
+    </div>
     <div class="data-grid">
       <div class="panel" style="display:grid;gap:12px">
         <h2>Export</h2>
@@ -648,6 +701,7 @@ function changed({ resolve = true } = {}) {
   version++;
   save();
   updateBadges();
+  if (typeof markDirty === 'function') markDirty();
   if (resolve) refreshActive();
 }
 const fodderItems = () => state.items.filter((it) => it.kind !== 'base');
@@ -1588,6 +1642,240 @@ document.addEventListener('paste', (e) => {
   toast(`Pasted ${files.length} screenshot${files.length === 1 ? '' : 's'}`);
 });
 
+/* ---------------- GitHub sync ---------------- */
+// Keeps fodder, bases and settings in a JSON file in a GitHub repo so every machine shares them.
+// The token lives only in this browser's storage; it never goes into exports or the synced file.
+const SYNC_KEY = 'quanah-sync-v1';
+const TOKEN_KEY = 'quanah-gh-token';
+const SYNC_DEFAULTS = { repo: 'kevinvannieuwenhuizen/Quanah.Solver', branch: '', path: 'data/inventory.json', auto: true };
+const syncAvailable = !inFrame && typeof fetch === 'function';
+let sync = (() => {
+  const base = Object.assign({}, SYNC_DEFAULTS, { sha: null, syncedAt: null, dirty: false });
+  try { return Object.assign(base, JSON.parse(localStorage.getItem(SYNC_KEY) || '{}')); } catch (e) { return base; }
+})();
+let syncBusy = false, syncPhase = '', syncError = '', syncInfo = '', syncConflict = false, autoTimer = 0, lastCheck = 0, applyingRemote = false;
+function saveSync() { try { localStorage.setItem(SYNC_KEY, JSON.stringify(sync)); } catch (e) { /* ignore */ } }
+function getToken() { try { return localStorage.getItem(TOKEN_KEY) || ''; } catch (e) { return ''; } }
+function setToken(t) { try { if (t) localStorage.setItem(TOKEN_KEY, t); else localStorage.removeItem(TOKEN_KEY); } catch (e) { /* ignore */ } }
+const syncReady = () => syncAvailable && !!getToken() && /^[\w.-]+\/[\w.-]+$/.test(String(sync.repo).trim()) && !!String(sync.path).trim();
+
+function b64encode(str) {
+  const bytes = new TextEncoder().encode(str);
+  let bin = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  return btoa(bin);
+}
+function b64decode(b64) {
+  const bin = atob(String(b64).replace(/\s/g, ''));
+  return new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0)));
+}
+async function gh(method, url, body) {
+  const token = getToken();
+  if (!token) throw { code: 'no_token' };
+  let res;
+  try {
+    const headers = { Accept: 'application/vnd.github+json', Authorization: `Bearer ${token}`, 'X-GitHub-Api-Version': '2022-11-28' };
+    if (body) headers['Content-Type'] = 'application/json';
+    res = await fetch(`https://api.github.com${url}`, { method, cache: 'no-store', headers, body: body ? JSON.stringify(body) : undefined });
+  } catch (e) { throw { code: 'network' }; }
+  let data = null;
+  try { data = await res.json(); } catch (e) { /* empty body */ }
+  if (!res.ok) throw { code: 'http', status: res.status, message: (data && data.message) || '' };
+  return data;
+}
+function repoPath() {
+  const m = String(sync.repo).trim().match(/^([\w.-]+)\/([\w.-]+)$/);
+  if (!m) throw { code: 'bad_repo' };
+  return `/repos/${m[1]}/${m[2]}`;
+}
+function contentsUrl() {
+  const p = String(sync.path).trim().replace(/^\/+/, '');
+  return `${repoPath()}/contents/${p.split('/').map(encodeURIComponent).join('/')}`;
+}
+/** Current file on GitHub: { sha, text }, or null when the file does not exist yet. */
+async function remoteGet() {
+  const ref = sync.branch.trim() ? `?ref=${encodeURIComponent(sync.branch.trim())}` : '';
+  try {
+    const f = await gh('GET', contentsUrl() + ref);
+    return { sha: f.sha, text: b64decode(f.content || '') };
+  } catch (e) {
+    if (e.code === 'http' && e.status === 404) { await gh('GET', repoPath()); return null; } // repo visible → file missing
+    throw e;
+  }
+}
+function syncPayload() {
+  return JSON.stringify({ app: 'quanah-hologram-solver', version: 2, savedAt: new Date().toISOString(), nextId: state.nextId, settings: state.settings, items: state.items }, null, 1) + '\n';
+}
+function applyRemote(text) {
+  let d;
+  try { d = JSON.parse(text); } catch (e) { throw { code: 'bad_file' }; }
+  if (!d || !Array.isArray(d.items)) throw { code: 'bad_file' };
+  const items = d.items.map((raw) => Q.normalizeItem(raw, Number(raw.id))).filter((it) => it.slot && Number.isFinite(it.id));
+  applyingRemote = true;
+  try {
+    state.items = items;
+    state.nextId = Math.max(Number(d.nextId) || 1, ...items.map((i) => i.id + 1), 1);
+    state.settings = Object.assign(defaultSettings(), d.settings || {});
+    state.sample = false;
+    renderSettings(); renderPresetList();
+    changed();
+  } finally { applyingRemote = false; }
+}
+function syncErrorText(e, during) {
+  if (!e) return '';
+  if (e.code === 'no_token') return 'Add a GitHub token first.';
+  if (e.code === 'bad_repo') return 'Write the repository as owner/name, for example kevinvannieuwenhuizen/Quanah.Solver.';
+  if (e.code === 'network') return 'Could not reach GitHub. Check your internet connection and try again.';
+  if (e.code === 'bad_file') return 'The file on GitHub is not a Quanah inventory export, so nothing was loaded.';
+  if (e.code === 'sample') return 'This is still the sample inventory. Clear it or add your own pieces before saving to GitHub.';
+  if (e.code === 'http') {
+    if (e.status === 401) return 'GitHub rejected the token. It may be expired or mistyped; paste a new one.';
+    if (e.status === 403) return /rate limit/i.test(e.message) ? 'GitHub rate limit reached. Try again in a few minutes.' : `The token can't ${during === 'save' ? 'write to' : 'read'} this repository. Give it Contents: Read and write on this repository.`;
+    if (e.status === 404) return 'Repository or branch not found, or the token has no access to it.';
+    return `GitHub answered ${e.status}${e.message ? `: ${e.message}` : ''}.`;
+  }
+  return 'Something went wrong while syncing.';
+}
+
+/** Called from changed(): local data now differs from GitHub. */
+function markDirty() {
+  if (applyingRemote || state.sample) return;
+  sync.dirty = true;
+  saveSync();
+  renderSync();
+  if (sync.auto && syncReady() && !syncConflict) {
+    clearTimeout(autoTimer);
+    autoTimer = setTimeout(() => { syncSave({ auto: true }); }, 8000);
+  }
+}
+async function syncSave({ force = false, auto = false } = {}) {
+  if (syncBusy) return;
+  clearTimeout(autoTimer);
+  if (state.sample) { syncError = syncErrorText({ code: 'sample' }); renderSync(); return; }
+  syncBusy = true; syncPhase = 'Saving…'; syncError = ''; renderSync();
+  try {
+    const remote = await remoteGet();
+    // Someone else saved since this machine last synced: never overwrite silently.
+    if (remote && remote.sha !== sync.sha && !force) { syncConflict = true; return; }
+    const fodder = fodderItems().length, bases = baseItems().length;
+    const body = { message: `Update Quanah inventory (${fodder} fodder, ${bases} bases)`, content: b64encode(syncPayload()) };
+    if (remote) body.sha = remote.sha;
+    if (sync.branch.trim()) body.branch = sync.branch.trim();
+    const res = await gh('PUT', contentsUrl(), body);
+    sync.sha = res && res.content ? res.content.sha : null;
+    sync.dirty = false; sync.syncedAt = new Date().toISOString(); syncConflict = false; syncInfo = '';
+    saveSync();
+    if (!auto) toast('Saved to GitHub');
+  } catch (e) {
+    if (e.code === 'http' && (e.status === 409 || e.status === 422)) syncConflict = true;
+    else syncError = syncErrorText(e, 'save');
+  } finally { syncBusy = false; syncPhase = ''; renderSync(); }
+}
+async function syncLoad() {
+  if (syncBusy) return;
+  syncBusy = true; syncPhase = 'Loading…'; syncError = ''; syncInfo = ''; renderSync();
+  try {
+    const remote = await remoteGet();
+    if (!remote) { syncInfo = 'There is no inventory file on GitHub yet. Press Save to GitHub to create it.'; return; }
+    applyRemote(remote.text);
+    sync.sha = remote.sha; sync.dirty = false; sync.syncedAt = new Date().toISOString(); syncConflict = false;
+    saveSync();
+    toast('Loaded your data from GitHub');
+  } catch (e) { syncError = syncErrorText(e, 'load'); }
+  finally { syncBusy = false; syncPhase = ''; renderSync(); }
+}
+/** On open and when the tab comes back: pull newer data from other machines, or push pending changes. */
+async function syncCheck({ quiet = true } = {}) {
+  if (!syncReady() || syncBusy) return;
+  lastCheck = Date.now();
+  syncBusy = true; syncPhase = 'Checking…'; if (!quiet) syncError = ''; renderSync();
+  let remote;
+  try { remote = await remoteGet(); } catch (e) { syncError = syncErrorText(e, 'load'); syncBusy = false; syncPhase = ''; renderSync(); return; }
+  syncBusy = false; syncPhase = '';
+  if (!remote) {
+    syncInfo = 'There is no inventory file on GitHub yet. Press Save to GitHub to create it.';
+    renderSync();
+    if (sync.dirty && sync.auto) syncSave({ auto: true });
+    return;
+  }
+  if (remote.sha === sync.sha) {
+    renderSync();
+    if (sync.dirty && sync.auto) syncSave({ auto: true });
+    return;
+  }
+  // Auto-load only when nothing local could be lost: the sample, an empty inventory, or a clean synced copy.
+  const safeToReplace = state.sample || !state.items.length || (sync.sha && !sync.dirty);
+  if (safeToReplace) {
+    try {
+      applyRemote(remote.text);
+      sync.sha = remote.sha; sync.dirty = false; sync.syncedAt = new Date().toISOString(); syncConflict = false;
+      saveSync();
+      toast('Loaded your latest data from GitHub');
+    } catch (e) { syncError = syncErrorText(e, 'load'); }
+  } else {
+    syncConflict = true;
+  }
+  renderSync();
+}
+
+function renderSync() {
+  const pill = $('#sync-pill');
+  let label, cls;
+  if (!syncAvailable) { pill.hidden = true; }
+  else {
+    pill.hidden = false;
+    if (!syncReady()) { label = 'GitHub sync off'; cls = 'off'; }
+    else if (syncBusy) { label = syncPhase || 'Syncing…'; cls = 'busy'; }
+    else if (syncConflict) { label = 'Sync conflict'; cls = 'bad'; }
+    else if (syncError) { label = 'Sync problem'; cls = 'bad'; }
+    else if (sync.dirty) { label = sync.auto ? 'Saving soon…' : 'Not saved to GitHub'; cls = 'warn'; }
+    else if (sync.sha) { label = 'Synced with GitHub'; cls = 'ok'; }
+    else { label = 'Not saved to GitHub yet'; cls = 'warn'; }
+    pill.textContent = label;
+    pill.className = `sync-pill ${cls}`;
+  }
+  $('#sync-unavailable').hidden = syncAvailable;
+  $('#sync-body').hidden = !syncAvailable;
+  if (!syncAvailable) return;
+  $('#sync-state').textContent = pill.textContent;
+  $('#sync-token').placeholder = getToken() ? 'Token saved on this machine' : 'github_pat_…';
+  $('#sync-forget').hidden = !getToken();
+  const when = sync.syncedAt ? new Date(sync.syncedAt).toLocaleString() : 'never';
+  $('#sync-when').textContent = `Last synced on this machine: ${when}`;
+  $$('#sync-body [data-act^="sync-"]').forEach((b) => { if (b.id !== 'sync-forget') b.disabled = syncBusy; });
+  const msg = $('#sync-msg');
+  msg.textContent = syncError || syncInfo;
+  msg.className = `msg${syncError ? ' err' : ''}`;
+  $('#sync-conflict').hidden = !syncConflict;
+}
+function initSync() {
+  if (!syncAvailable) { renderSync(); return; }
+  $('#sync-repo').value = sync.repo;
+  $('#sync-branch').value = sync.branch;
+  $('#sync-path').value = sync.path;
+  $('#sync-auto').checked = !!sync.auto;
+  const target = (e) => {
+    const k = e.target.id.replace('sync-', '');
+    sync[k] = e.target.value.trim();
+    sync.sha = null; // a different file: treat it as never synced
+    saveSync(); renderSync();
+  };
+  ['#sync-repo', '#sync-branch', '#sync-path'].forEach((sel) => $(sel).addEventListener('change', target));
+  $('#sync-auto').addEventListener('change', (e) => { sync.auto = e.target.checked; saveSync(); renderSync(); if (sync.auto && sync.dirty) markDirty(); });
+  $('#sync-token').addEventListener('change', (e) => {
+    const t = e.target.value.trim();
+    if (!t) return;
+    setToken(t); e.target.value = '';
+    syncError = ''; renderSync();
+    syncCheck({ quiet: false });
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && Date.now() - lastCheck > 30000) syncCheck();
+  });
+  renderSync();
+  syncCheck();
+}
+
 /* ---------------- Global actions ---------------- */
 document.addEventListener('click', (e) => {
   const b = e.target.closest('[data-act]');
@@ -1663,6 +1951,16 @@ document.addEventListener('click', (e) => {
     download();
   } else if (act === 'import') {
     doImport();
+  } else if (act === 'sync-save') {
+    syncSave();
+  } else if (act === 'sync-load') {
+    syncLoad();
+  } else if (act === 'sync-take-remote') {
+    syncLoad();
+  } else if (act === 'sync-overwrite') {
+    syncSave({ force: true });
+  } else if (act === 'sync-forget') {
+    setToken(''); clearTimeout(autoTimer); syncError = ''; syncConflict = false; renderSync(); toast('Token removed from this machine');
   } else if (act === 'scan-read') {
     readScreens();
   } else if (act === 'scan-stop') {
@@ -1690,6 +1988,7 @@ function toastUndo(msg) {
 /* ---------------- Boot ---------------- */
 initForm();
 initBaseForm();
+initSync();
 renderSettings();
 renderPresetList();
 updateBadges();

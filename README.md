@@ -18,6 +18,18 @@ Open `index.html` in a browser. No build step and no install. Everything runs lo
 - **Check all presets**: runs every meta build at once and ranks them by how close your inventory is.
 - **Import / Export**: JSON (inventory + settings) or CSV (`slot,line1,line2,line3,socket1,socket2,socket3,note,type` with type `fodder` or `base`; full skill names or codes).
 
+## Sync across machines (GitHub)
+
+On the **Import / Export** tab, *Sync with GitHub* stores your fodder, bases and settings in `data/inventory.json` in this repository, so every machine you open the app on shares the same data.
+
+1. Open `index.html` from a clone or download of this repo (or from GitHub Pages).
+2. Create a [fine-grained token](https://github.com/settings/personal-access-tokens/new): *Only select repositories* → this repo, *Contents: Read and write*, nothing else.
+3. Paste it in the token field. Do this once per machine; the token stays in that browser only and is never exported or synced.
+
+With auto-save on, every change is committed a few seconds later. When the app opens (or you return to the tab) it loads newer data saved from another machine. If both sides changed, it asks which version to keep instead of overwriting. Branch empty = the repository's default branch.
+
+The hosted claude.ai page cannot reach GitHub; use Export / Import there.
+
 ## Safe to use while MapleStory is running?
 
 The tool is a plain web page. It never reads game memory, watches your screen or keyboard, or sends input to the game; it only sees images you choose to give it. Take screenshots with the game's own screenshot key or Windows Snipping Tool (Win+Shift+S, then paste), not with overlay/recording tools that inject into the game client.

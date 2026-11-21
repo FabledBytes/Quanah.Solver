@@ -5,7 +5,9 @@
  * Web Worker) and as a CommonJS module for Node tests.
  *
  * Model
- *   item   = { id, slot, lines: [skillKey x3], sockets: [socketKey x3], note }
+ *   item   = { id, kind, slot, lines: [skillKey x3], sockets: [socketKey x3], note }
+ *            kind 'lines' = line fodder (only its skill lines matter),
+ *            kind 'base'  = socket base (only its jewel sockets matter; Orbs move the lines onto it).
  *   target = 18 skill "slots": fixed counts per skill + an optional number of
  *            "any class" lines (distinct class skills that are not otherwise
  *            targeted, used by the Modified Chinese build).
@@ -420,6 +422,20 @@
     };
   }
 
+  /** Socket summary for one base: prismatic / useful colored / wasted / unknown counts. */
+  function rateBase(sockets, statColors) {
+    const colors = new Set(statColors && statColors.length ? statColors : DEFAULT_STAT_COLORS);
+    let p = 0, u = 0, wasted = 0, unknown = 0;
+    for (const s of sockets || []) {
+      if (!s) unknown++;
+      else if (s === 'prismatic') p++;
+      else if (colors.has(s)) u++;
+      else wasted++;
+    }
+    unknown += Math.max(0, 3 - (sockets || []).length);
+    return { p, u, wasted, unknown, perfect: wasted === 0 && unknown === 0 };
+  }
+
   /* ------------------------------------------------------------------ */
   /* Top-level API                                                       */
   /* ------------------------------------------------------------------ */
@@ -432,7 +448,9 @@
     const t0 = now();
     const T = resolveTarget(def, settings);
     if (!T.valid) return { target: T, error: T.errors.join(' ') };
-    const clean = (items || []).filter((it) => it && SLOTS.includes(it.slot));
+    const all = (items || []).filter((it) => it && SLOTS.includes(it.slot));
+    const clean = all.filter((it) => it.kind !== 'base');
+    const bases = all.filter((it) => it.kind === 'base');
     const byId = new Map(clean.map((it) => [it.id, it]));
     const groups = buildSlotGroups(clean, T, SLOTS);
     const res = search(groups, T, { limit: opts.limit == null ? 60 : opts.limit, maxNodes: opts.maxNodes });
@@ -447,7 +465,7 @@
       return { score: r.score, slots, variants, analysis: analyzeCombo(slots.map((x) => x.lines), T) };
     });
     const wishlist = opts.wishlist === false ? null : buildWishlist(T, groups, opts);
-    const sockets = solveSockets(clean, T, settings.statColors);
+    const sockets = solveSockets(bases, T, settings.statColors);
     return {
       target: T,
       best: combos.length ? combos[0].score : 0,
@@ -456,6 +474,7 @@
       combos, wishlist, sockets,
       nodes: res.nodes, truncated: res.truncated,
       itemCount: clean.length,
+      baseCount: bases.length,
       ms: Math.round(now() - t0),
     };
   }
@@ -528,8 +547,10 @@
     raw = raw || {};
     const lines = Array.isArray(raw.lines) ? raw.lines : [raw.line1, raw.line2, raw.line3];
     const sockets = Array.isArray(raw.sockets) ? raw.sockets : [raw.socket1, raw.socket2, raw.socket3];
+    const kindRaw = String(raw.kind || raw.type || '').toLowerCase();
     return {
       id,
+      kind: /base|socket|jewel/.test(kindRaw) ? 'base' : 'lines',
       slot: SLOTS.includes(raw.slot) ? raw.slot : parseSlot(raw.slot),
       lines: padLines(lines.map(parseSkill)),
       sockets: padLines(sockets.map(parseSocket)),
@@ -583,10 +604,11 @@
         l: [col(['line1', 'skill1', 'l1'], 1), col(['line2', 'skill2', 'l2'], 2), col(['line3', 'skill3', 'l3'], 3)],
         s: [col(['socket1', 's1', 'jewel1'], 4), col(['socket2', 's2', 'jewel2'], 5), col(['socket3', 's3', 'jewel3'], 6)],
         note: col(['note', 'notes', 'comment'], 7),
+        kind: col(['type', 'kind', 'pool'], 8),
       };
       const get = (r, i) => (i >= 0 && i < r.length ? r[i].trim() : '');
       rawItems = rows.slice(hasHeader ? 1 : 0).map((r) => ({
-        slot: get(r, ci.slot), lines: ci.l.map((i) => get(r, i)), sockets: ci.s.map((i) => get(r, i)), note: get(r, ci.note),
+        slot: get(r, ci.slot), lines: ci.l.map((i) => get(r, i)), sockets: ci.s.map((i) => get(r, i)), note: get(r, ci.note), kind: get(r, ci.kind),
       }));
     }
     const items = [];
@@ -716,10 +738,10 @@
   function toCSV(items) {
     const esc = (v) => (/[",\n;]/.test(v) ? `"${String(v).replace(/"/g, '""')}"` : String(v));
     const name = (k) => (SKILL_BY_KEY[k] ? SKILL_BY_KEY[k].name : '');
-    const out = ['id,slot,line1,line2,line3,socket1,socket2,socket3,note'];
+    const out = ['id,slot,line1,line2,line3,socket1,socket2,socket3,note,type'];
     for (const it of items) {
       const l = padLines(it.lines), s = padLines(it.sockets);
-      out.push([it.id, it.slot, name(l[0]), name(l[1]), name(l[2]), s[0], s[1], s[2], it.note || ''].map(esc).join(','));
+      out.push([it.id, it.slot, name(l[0]), name(l[1]), name(l[2]), s[0], s[1], s[2], it.note || '', it.kind === 'base' ? 'base' : 'fodder'].map(esc).join(','));
     }
     return out.join('\n');
   }
@@ -727,7 +749,7 @@
   return {
     TOTAL_LINES, SLOTS, SKILLS, SCORED, SKILL_BY_KEY, CLASS_KEYS, SOCKETS, DEFAULT_STAT_COLORS, PRESETS,
     resolveTarget, scoreCounts, deficits, countLines, buildSlotGroups, search, analyzeCombo,
-    buildWishlist, solveSockets, solve, checkAll,
+    buildWishlist, solveSockets, rateBase, solve, checkAll,
     parseSkill, parseSocket, parseSlot, matchSkill, matchSocket, normalizeItem, parseImport, parseCSV, toCSV,
     parseOcrText, ocrLineSkills,
   };

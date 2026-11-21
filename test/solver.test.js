@@ -51,11 +51,27 @@ test('finds the planted traditional 18/18', () => {
   assert.deepEqual(r.combos[0].analysis.missing.keys, []);
 });
 
-test('sockets: 4 prismatic + 14 stat on the planted set', () => {
-  const r = Q.solve(planted, preset('traditional'), {});
+test('sockets come only from socket bases, lines only from fodder', () => {
+  const asBases = planted.map((it) => ({ ...it, id: it.id + 100, kind: 'base', lines: ['', '', ''] }));
+  const r0 = Q.solve(planted, preset('traditional'), {});
+  assert.equal(r0.sockets.anyData, false); // fodder sockets are ignored
+  const r = Q.solve([...planted, ...asBases], preset('traditional'), {});
+  assert.equal(r.best, 18);
+  assert.equal(r.itemCount, 6);
+  assert.equal(r.baseCount, 6);
   assert.equal(r.sockets.prismatic, 4);
   assert.equal(r.sockets.stat, 13); // cape has a blue socket
   assert.equal(r.sockets.score, 17);
+  assert.ok(r.sockets.slots.every((x) => x.items[0] > 100));
+  const rb = Q.rateBase(['prismatic', 'red', 'blue'], ['red', 'green', 'gray']);
+  assert.deepEqual([rb.p, rb.u, rb.wasted, rb.perfect], [1, 1, 1, false]);
+});
+
+test('CSV keeps the fodder / base type', () => {
+  const csv = Q.toCSV([{ id: 1, kind: 'base', slot: 'Hat', lines: ['', '', ''], sockets: ['prismatic', 'red', 'green'], note: '' }]);
+  assert.ok(csv.includes(',base'));
+  assert.equal(Q.parseImport(csv).items[0].kind, 'base');
+  assert.equal(Q.parseImport('slot,line1,line2,line3\nHat,DL,WH,REG').items[0].kind, 'lines');
 });
 
 test('partial match reports missing skill, wasted line and the slot to replace', () => {

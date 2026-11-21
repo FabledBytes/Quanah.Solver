@@ -232,6 +232,17 @@ tr.leader td { background: var(--accent-soft); }
 .colors { display: flex; flex-wrap: wrap; gap: 6px 14px; }
 .colors label { display: inline-flex; align-items: center; gap: 6px; font-size: .9rem; }
 
+.rate { font-size: .76rem; font-weight: 500; border-radius: 5px; padding: 1px 7px; white-space: nowrap; }
+.rate.good { background: var(--ok-soft); color: var(--ok); }
+.rate.meh { background: var(--warn-soft); color: var(--warn); }
+.rate.unk { background: var(--surface-2); color: var(--muted); border: 1px dashed var(--line-strong); }
+.item.base { grid-template-columns: 44px auto minmax(0, 1fr) auto; }
+.orb { font-size: .82rem; color: var(--muted); }
+.orb b { color: var(--fg); font-weight: 500; }
+.seg-kind { display: inline-flex; border: 1px solid var(--line-strong); border-radius: var(--r-sm); overflow: hidden; }
+.seg-kind button { appearance: none; border: 0; background: var(--surface); padding: 6px 12px; cursor: pointer; font-size: .86rem; }
+.seg-kind button[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); }
+
 /* Scan */
 .engine { font-size: .8rem; color: var(--muted); border: 1px solid var(--line); border-radius: 99px; padding: 3px 10px; background: var(--surface-2); }
 .engine b { color: var(--fg); font-weight: 600; }
@@ -248,7 +259,7 @@ tr.leader td { background: var(--accent-soft); }
 .thumb .st-done { color: var(--ok); } .thumb .st-error { color: var(--bad); } .thumb .st-reading { color: var(--accent); }
 .thumb button { position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; border-radius: 50%; border: 0; cursor: pointer; background: var(--surface); color: var(--fg); box-shadow: var(--shadow); line-height: 1; }
 .scan-rows { display: grid; gap: 8px; }
-.scan-row { display: grid; grid-template-columns: auto 64px 110px minmax(0, 1.6fr) minmax(0, 1.2fr) auto; gap: 8px 10px; align-items: center; padding: 8px; border: 1px solid var(--line); border-radius: var(--r-sm); }
+.scan-row { display: grid; grid-template-columns: auto 64px 130px 110px minmax(0, 1fr) auto; gap: 8px 10px; align-items: center; padding: 8px; border: 1px solid var(--line); border-radius: var(--r-sm); }
 .scan-row.off { opacity: .55; }
 .scan-row.bad { border-color: var(--warn); }
 .scan-row .mini { width: 64px; height: 40px; object-fit: cover; object-position: top; border-radius: 4px; border: 1px solid var(--line); }
@@ -283,7 +294,10 @@ details.raw pre { font: .74rem/1.4 var(--font-mono); white-space: pre-wrap; max-
   .seg { grid-template-columns: repeat(3, 1fr); }
   .scan-row { grid-template-columns: auto 64px minmax(0, 1fr); }
   .scan-row .three, .scan-row .warn { grid-column: 1 / -1; }
-  .scan-row > button { grid-column: 3; grid-row: 1; justify-self: end; }
+  .scan-row > select[data-scan="slot"] { grid-column: 1 / -1; }
+  .scan-row > button { grid-column: 1 / -1; justify-self: end; }
+  .item.base { grid-template-columns: 38px auto minmax(0, 1fr); }
+  .item.base .acts { grid-column: 1 / -1; grid-row: auto; justify-self: end; }
 }
 @media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 3s; } }
 </style>
@@ -308,11 +322,11 @@ details.raw pre { font: .74rem/1.4 var(--font-mono); white-space: pre-wrap; max-
       </div>
     </div>
     <nav class="tabs" role="tablist" aria-label="Sections">
-      <button class="tab" role="tab" data-tab="inventory" id="tab-inventory">Inventory <span class="badge" id="badge-items">0</span></button>
+      <button class="tab" role="tab" data-tab="inventory" id="tab-inventory">Line fodder <span class="badge" id="badge-items">0</span></button>
       <button class="tab" role="tab" data-tab="scan" id="tab-scan">Scan screenshots</button>
       <button class="tab" role="tab" data-tab="solve" id="tab-solve">Solve</button>
       <button class="tab" role="tab" data-tab="compare" id="tab-compare">Check all presets</button>
-      <button class="tab" role="tab" data-tab="sockets" id="tab-sockets">Socket bases</button>
+      <button class="tab" role="tab" data-tab="sockets" id="tab-sockets">Socket bases <span class="badge" id="badge-bases">0</span></button>
       <button class="tab" role="tab" data-tab="data" id="tab-data">Import / Export</button>
     </nav>
   </div>
@@ -328,13 +342,13 @@ details.raw pre { font: .74rem/1.4 var(--font-mono); white-space: pre-wrap; max-
     <div class="inv-layout">
       <form class="panel entry" id="item-form" autocomplete="off">
         <div class="panel-head" style="margin-bottom:0">
-          <h2 id="form-title">Add a piece</h2>
+          <h2 id="form-title">Add line fodder</h2>
           <button type="button" class="btn ghost" id="form-cancel" hidden>Cancel edit</button>
         </div>
         <label class="field quick">
           <span>Quick entry</span>
-          <input type="text" id="quick" placeholder="gloves dl wh cd  p r g" spellcheck="false">
-          <span class="hint">Type a slot, up to 3 skills and up to 3 sockets, then press Enter. Codes: dl wh reg att matt cd dmg war mag arc thf pir · sockets p r g gray b pu</span>
+          <input type="text" id="quick" placeholder="gloves dl wh cd" spellcheck="false">
+          <span class="hint">Type a slot and up to 3 skills, then press Enter. Codes: dl wh reg att matt cd dmg war mag arc thf pir</span>
         </label>
         <div class="field">
           <span>Armor slot</span>
@@ -348,28 +362,20 @@ details.raw pre { font: .74rem/1.4 var(--font-mono); white-space: pre-wrap; max-
             <select id="line-2" aria-label="Skill line 3"></select>
           </div>
         </div>
-        <div class="field">
-          <span>Jewel sockets <span class="muted">(optional, for socket bases)</span></span>
-          <div class="three">
-            <select id="sock-0" aria-label="Socket 1"></select>
-            <select id="sock-1" aria-label="Socket 2"></select>
-            <select id="sock-2" aria-label="Socket 3"></select>
-          </div>
-        </div>
         <label class="field">
           <span>Note</span>
-          <input type="text" id="note" maxlength="200" placeholder="e.g. Socket base, keep">
+          <input type="text" id="note" maxlength="200" placeholder="optional">
         </label>
         <div class="row">
-          <button type="submit" class="btn primary" id="form-submit">Add piece</button>
+          <button type="submit" class="btn primary" id="form-submit">Add fodder</button>
           <span class="hint" id="form-msg"></span>
         </div>
-        <p class="hint">Have screenshots? <a href="#scan" data-act="goto" data-tab="scan">Scan them instead</a> and only check the result.</p>
+        <p class="hint">Only the 3 skill lines matter here. Jewel sockets go on the <a href="#sockets" data-act="goto" data-tab="sockets">Socket bases</a> tab. Have screenshots? <a href="#scan" data-act="goto" data-tab="scan">Scan them</a>.</p>
       </form>
 
       <div class="panel" style="min-width:0">
         <div class="panel-head">
-          <h2>Your pieces</h2>
+          <h2>Your line fodder</h2>
           <div class="slot-filter" id="slot-filter"></div>
         </div>
         <div id="inv-list"></div>
@@ -386,6 +392,14 @@ details.raw pre { font: .74rem/1.4 var(--font-mono); white-space: pre-wrap; max-
           <p class="muted small" style="max-width:70ch">Take a screenshot of each item tooltip (one or several per image is fine). The skill lines are read for you, then you check them here before anything goes into your inventory.</p>
         </div>
         <span class="engine" id="scan-engine"></span>
+      </div>
+      <div class="row">
+        <span class="small muted">These screenshots are</span>
+        <div class="seg-kind" id="scan-kind" role="group" aria-label="What the screenshots are">
+          <button type="button" data-kind="lines" aria-pressed="true">Line fodder</button>
+          <button type="button" data-kind="base" aria-pressed="false">Socket bases</button>
+        </div>
+        <span class="hint" id="scan-kind-hint">Only the 3 skill lines are kept.</span>
       </div>
       <div class="drop" id="drop" tabindex="0">
         <p><b>Drop screenshots here</b>, choose files, or click the paste box and press Ctrl+V</p>
@@ -457,6 +471,48 @@ details.raw pre { font: .74rem/1.4 var(--font-mono); white-space: pre-wrap; max-
         <span class="hint">STR classes such as Shade use Red, Green and Gray. Off-color sockets count as wasted.</span>
       </div>
     </div>
+    <div class="inv-layout">
+      <form class="panel entry" id="base-form" autocomplete="off">
+        <div class="panel-head" style="margin-bottom:0">
+          <h2 id="base-form-title">Add a socket base</h2>
+          <button type="button" class="btn ghost" id="base-cancel" hidden>Cancel edit</button>
+        </div>
+        <label class="field quick">
+          <span>Quick entry</span>
+          <input type="text" id="base-quick" placeholder="hat p r g" spellcheck="false">
+          <span class="hint">Type a slot and 3 sockets, then press Enter. Sockets: p (Prismatic) r g gray b pu</span>
+        </label>
+        <div class="field">
+          <span>Armor slot</span>
+          <div class="seg" id="base-slot-seg" role="group" aria-label="Armor slot"></div>
+        </div>
+        <div class="field">
+          <span>Jewel sockets</span>
+          <div class="three">
+            <select id="bsock-0" aria-label="Socket 1"></select>
+            <select id="bsock-1" aria-label="Socket 2"></select>
+            <select id="bsock-2" aria-label="Socket 3"></select>
+          </div>
+          <span class="hint" id="base-rate"></span>
+        </div>
+        <label class="field">
+          <span>Note</span>
+          <input type="text" id="base-note" maxlength="200" placeholder="optional">
+        </label>
+        <div class="row">
+          <button type="submit" class="btn primary" id="base-submit">Add base</button>
+          <span class="hint" id="base-msg"></span>
+        </div>
+        <p class="hint">Only the sockets matter here; the lines come from your fodder via Orbs. Have screenshots? <a href="#scan" data-act="goto" data-tab="scan">Scan them</a> as socket bases.</p>
+      </form>
+      <div class="panel" style="min-width:0">
+        <div class="panel-head">
+          <h2>Your socket bases</h2>
+          <div class="slot-filter" id="base-filter"></div>
+        </div>
+        <div id="base-list"></div>
+      </div>
+    </div>
     <div id="sockets-out"></div>
   </section>
 
@@ -479,7 +535,7 @@ details.raw pre { font: .74rem/1.4 var(--font-mono); white-space: pre-wrap; max-
       </div>
       <div class="panel" style="display:grid;gap:12px">
         <h2>Import</h2>
-        <p class="muted small">Paste a JSON export or CSV, or pick a file. CSV columns: <span class="mono">slot, line1, line2, line3, socket1, socket2, socket3, note</span>. Skill names or codes both work.</p>
+        <p class="muted small">Paste a JSON export or CSV, or pick a file. CSV columns: <span class="mono">slot, line1, line2, line3, socket1, socket2, socket3, note, type</span> (type is <span class="mono">fodder</span> or <span class="mono">base</span>). Skill names or codes both work.</p>
         <textarea id="import-text" rows="8" placeholder="slot,line1,line2,line3,socket1,socket2,socket3,note&#10;Hat,Dimensional Leap,White Hole,Registry,Prismatic,Red,Green,"></textarea>
         <div class="row">
           <input type="file" id="import-file" accept=".json,.csv,.txt,application/json,text/csv">
@@ -549,11 +605,15 @@ function makeSample() {
     const plantAt = Math.floor(rnd() * n);
     for (let k = 0; k < n; k++) {
       const lines = k === plantAt ? planted[slot].slice() : [0, 1, 2].map(() => pickW(lineW));
-      const sockets = [0, 1, 2].map(() => pickW(sockW));
-      items.push({ id: id++, slot, lines, sockets, note: '' });
+      items.push({ id: id++, kind: 'lines', slot, lines, sockets: ['', '', ''], note: '' });
     }
-    // One clean socket base per slot.
-    items.push({ id: id++, slot, lines: [pickW(lineW), 'OTHER', 'OTHER'], sockets: ['prismatic', 'red', 'green'], note: 'Socket base' });
+  }
+  // Socket bases are farmed separately: two or three per slot.
+  const goodBase = { Hat: ['prismatic', 'red', 'green'], Top: ['prismatic', 'gray', 'red'], Bottom: ['red', 'green', 'gray'], Gloves: ['prismatic', 'green', 'green'], Shoes: ['red', 'red', 'gray'], Cape: ['prismatic', 'red', 'gray'] };
+  for (const slot of Q.SLOTS) {
+    items.push({ id: id++, kind: 'base', slot, lines: ['', '', ''], sockets: goodBase[slot].slice(), note: '' });
+    const extra = 1 + Math.floor(rnd() * 2);
+    for (let k = 0; k < extra; k++) items.push({ id: id++, kind: 'base', slot, lines: ['', '', ''], sockets: [0, 1, 2].map(() => pickW(sockW)), note: '' });
   }
   return { items, nextId: id };
 }
@@ -567,9 +627,16 @@ function load() {
     if (!raw) return null;
     const d = JSON.parse(raw);
     if (!d || !Array.isArray(d.items)) return null;
-    const items = d.items.map((it) => Q.normalizeItem(it, it.id)).filter((it) => it.slot && Number.isFinite(it.id));
+    const settings = Object.assign(defaultSettings(), d.settings || {});
+    if (d.sample) return Object.assign(sampleState(), { settings });
+    const items = d.items.map((raw) => {
+      const it = Q.normalizeItem(raw, raw.id);
+      // Saves from before fodder and bases were split: sockets-only pieces or ones noted as a base become bases.
+      if (!raw.kind && ((!it.lines.some(Boolean) && it.sockets.some(Boolean)) || /socket\s*base/i.test(it.note))) it.kind = 'base';
+      return it;
+    }).filter((it) => it.slot && Number.isFinite(it.id));
     const nextId = Math.max(d.nextId || 1, ...items.map((i) => i.id + 1), 1);
-    return { items, nextId, settings: Object.assign(defaultSettings(), d.settings || {}), sample: !!d.sample };
+    return { items, nextId, settings, sample: false };
   } catch (e) { return null; }
 }
 let state = load() || sampleState();
@@ -580,8 +647,14 @@ function save() {
 function changed({ resolve = true } = {}) {
   version++;
   save();
-  $('#badge-items').textContent = state.items.length;
+  updateBadges();
   if (resolve) refreshActive();
+}
+const fodderItems = () => state.items.filter((it) => it.kind !== 'base');
+const baseItems = () => state.items.filter((it) => it.kind === 'base');
+function updateBadges() {
+  $('#badge-items').textContent = fodderItems().length;
+  $('#badge-bases').textContent = baseItems().length;
 }
 
 /* ---------------- Worker ---------------- */
@@ -629,7 +702,7 @@ function presetTitle(def) {
   if (def.id === 'own-class') return `Class-Specific (${Q.SKILL_BY_KEY[state.settings.ownClass].name})`;
   return def.name;
 }
-function itemsPlain() { return state.items.map((it) => ({ id: it.id, slot: it.slot, lines: it.lines, sockets: it.sockets })); }
+function itemsPlain() { return state.items.map((it) => ({ id: it.id, kind: it.kind, slot: it.slot, lines: it.lines, sockets: it.sockets })); }
 function chip(key, status) {
   if (!key) return `<span class="chip st-empty" title="Empty line">empty</span>`;
   const s = Q.SKILL_BY_KEY[key] || Q.SKILL_BY_KEY.OTHER;
@@ -716,7 +789,7 @@ function socketOptions() {
 }
 function initForm() {
   $('#slot-seg').innerHTML = Q.SLOTS.map((s) => `<button type="button" data-slot="${s}" aria-pressed="false">${s}</button>`).join('');
-  for (let i = 0; i < 3; i++) { $(`#line-${i}`).innerHTML = skillOptions(); $(`#sock-${i}`).innerHTML = socketOptions(); }
+  for (let i = 0; i < 3; i++) $(`#line-${i}`).innerHTML = skillOptions();
   setFormSlot('Hat');
   $('#slot-seg').addEventListener('click', (e) => { const b = e.target.closest('[data-slot]'); if (b) setFormSlot(b.dataset.slot); });
   $('#item-form').addEventListener('submit', (e) => { e.preventDefault(); submitForm(); });
@@ -731,14 +804,15 @@ function setFormSlot(slot) {
 function readForm() {
   return {
     slot: form.slot,
+    kind: 'lines',
     lines: [0, 1, 2].map((i) => $(`#line-${i}`).value),
-    sockets: [0, 1, 2].map((i) => $(`#sock-${i}`).value),
+    sockets: ['', '', ''],
     note: $('#note').value.trim(),
   };
 }
 function fillForm(it) {
   setFormSlot(it.slot);
-  for (let i = 0; i < 3; i++) { $(`#line-${i}`).value = it.lines[i] || ''; $(`#sock-${i}`).value = it.sockets[i] || ''; }
+  for (let i = 0; i < 3; i++) $(`#line-${i}`).value = it.lines[i] || '';
   $('#note').value = it.note || '';
 }
 function resetForm(keepSlot = true) {
@@ -746,14 +820,14 @@ function resetForm(keepSlot = true) {
   const slot = form.slot;
   fillForm({ slot: keepSlot ? slot : 'Hat', lines: ['', '', ''], sockets: ['', '', ''], note: '' });
   $('#quick').value = '';
-  $('#form-title').textContent = 'Add a piece';
-  $('#form-submit').textContent = 'Add piece';
+  $('#form-title').textContent = 'Add line fodder';
+  $('#form-submit').textContent = 'Add fodder';
   $('#form-cancel').hidden = true;
   renderInventory();
 }
 function applyQuick(text) {
   const toks = text.toLowerCase().split(/[\s,;|/:]+/).filter(Boolean);
-  let slot = null; const lines = []; const socks = [];
+  let slot = null; const lines = [];
   for (let i = 0; i < toks.length; i++) {
     if (!slot) { const s = Q.parseSlot(toks[i]); if (s) { slot = s; continue; } }
     let matched = false;
@@ -762,20 +836,14 @@ function applyQuick(text) {
       const k = Q.matchSkill(toks.slice(i, i + w).join(''));
       if (k !== null && k !== '' && lines.length < 3) { lines.push(k); i += w - 1; matched = true; }
     }
-    if (matched) continue;
-    const sk = Q.matchSocket(toks[i]);
-    if (sk && socks.length < 3) socks.push(sk);
   }
   if (slot) setFormSlot(slot);
-  for (let i = 0; i < 3; i++) {
-    $(`#line-${i}`).value = lines[i] || '';
-    $(`#sock-${i}`).value = socks[i] || '';
-  }
+  for (let i = 0; i < 3; i++) $(`#line-${i}`).value = lines[i] || '';
 }
 function submitForm() {
   const data = readForm();
-  if (!data.lines.some(Boolean) && !data.sockets.some(Boolean)) {
-    $('#form-msg').textContent = 'Pick at least one skill line or socket first.';
+  if (!data.lines.some(Boolean)) {
+    $('#form-msg').textContent = 'Pick at least one skill line first.';
     return;
   }
   $('#form-msg').textContent = '';
@@ -801,21 +869,22 @@ function submitForm() {
 let slotFilter = 'All';
 function renderInventory() {
   $('#sample-banner').hidden = !state.sample;
+  const fodder = fodderItems();
   const counts = Object.fromEntries(Q.SLOTS.map((s) => [s, 0]));
-  state.items.forEach((it) => { counts[it.slot]++; });
+  fodder.forEach((it) => { counts[it.slot]++; });
   $('#slot-filter').innerHTML = ['All', ...Q.SLOTS].map((s) => `<button type="button" data-filter="${s}" aria-pressed="${s === slotFilter}">${s}${s === 'All' ? '' : ` <span class="num muted">${counts[s]}</span>`}</button>`).join('');
   const slots = slotFilter === 'All' ? Q.SLOTS : [slotFilter];
-  if (!state.items.length) {
-    $('#inv-list').innerHTML = `<div class="empty-state"><h3>No pieces yet</h3><p>Add your first drop with the form, or use quick entry: <span class="mono">hat dl wh reg p r g</span>.</p><button class="btn" data-act="load-sample">Load sample inventory</button></div>`;
+  if (!fodder.length) {
+    $('#inv-list').innerHTML = `<div class="empty-state"><h3>No line fodder yet</h3><p>Add your first drop with the form, or use quick entry: <span class="mono">hat dl wh reg</span>.</p><button class="btn" data-act="load-sample">Load sample inventory</button></div>`;
     return;
   }
   $('#inv-list').innerHTML = slots.map((slot) => {
-    const list = state.items.filter((it) => it.slot === slot);
+    const list = fodder.filter((it) => it.slot === slot);
     const rows = list.map((it) => `
       <li class="item${it.id === form.editingId ? ' editing' : ''}">
         <span class="id">#${it.id}</span>
         <span class="chips">${it.lines.map((k) => chip(k)).join('')}</span>
-        ${jewels(it.sockets)}
+        <span></span>
         <span class="acts">
           <button type="button" class="btn ghost" data-act="edit" data-id="${it.id}" aria-label="Edit #${it.id}">Edit</button>
           <button type="button" class="btn ghost" data-act="dup" data-id="${it.id}" aria-label="Duplicate #${it.id}">Copy</button>
@@ -917,7 +986,7 @@ function solveNow(force) {
     $('#solve-out').innerHTML = `<div class="panel errors">The solver stopped with an error: ${esc(err.message)}</div>`;
   });
 }
-function comboCard(c, total) {
+function comboCard(c, total, sockets) {
   const a = c.analysis;
   const fixSlots = new Set(a.fixes.filter((f) => f.reach === total).map((f) => f.slotIndex));
   const label = c.score === total ? 'Exact 18/18 set' : `${total - c.score} line${total - c.score === 1 ? '' : 's'} short`;
@@ -933,6 +1002,12 @@ function comboCard(c, total) {
     const best = a.fixes.filter((f) => f.reach === a.fixes[0].reach).slice(0, 3);
     const fixes = best.map((f) => `<div class="row"><span class="label">${f.reach === total ? 'Completes' : `Reaches ${f.reach}/18`}</span> Replace <b>${Q.SLOTS[f.slotIndex]}</b> with ${needChips(f.need, f.anyClass, f.classOptions, f.free)}</div>`).join('');
     foot = `<div class="combo-foot"><div class="row"><span class="label">Missing</span>${missing}</div>${fixes}</div>`;
+  } else if (sockets && sockets.anyData) {
+    const moves = c.slots.map((s, i) => {
+      const base = sockets.slots[i];
+      return base.empty ? `<span>${s.slot} #${s.itemIds[0]} → <b>no base yet</b></span>` : `<span>${s.slot} #${s.itemIds[0]} → <b>base #${base.items[0]}</b></span>`;
+    }).join(' · ');
+    foot = `<div class="combo-foot"><div class="row"><span class="label">Orb plan</span><span class="orb">${moves}</span></div><div class="small muted">Socket bases: ${sockets.score}/18 (${sockets.prismatic}/${sockets.prismaticNeeded} Prismatic, ${sockets.stat}/${sockets.statNeeded} stat)</div></div>`;
   }
   return `<article class="combo"><div class="combo-head"><span class="score ${scoreClass(c.score, total)}">${c.score}/${total}</span><b>${label}</b>${c.variants > 1 ? `<span class="muted small">${fmt(c.variants)} item variants</span>` : ''}</div><div class="combo-grid">${cells}</div>${foot}</article>`;
 }
@@ -967,7 +1042,7 @@ function renderSolve(r) {
   const head = exacts.length ? `<div class="row" style="justify-content:space-between"><h2>Exact 18/18 sets</h2><span class="muted small">${exacts.length < r.combos.length ? 'Closest partial matches follow below.' : ''}</span></div>` : `<h2>Closest partial matches</h2>`;
   const legend = `<div class="legend"><span>${chip('DL')} counts</span><span>${chip('DL', 'over')} over cap</span><span>${chip('DMG', 'off')} not in build</span><span>${chip('')} no piece</span><span><span class="chip fix-swatch">highlighted</span> slot one piece can complete</span></div>`;
   const more = r.combos.length > showCount ? `<button class="btn" data-act="more">Show more (${r.combos.length - showCount} left)</button>` : '';
-  out.innerHTML = `<div class="view">${stats}<div class="results"><div class="combos">${head}${legend}${shown.map((c) => comboCard(c, total)).join('')}${more}
+  out.innerHTML = `<div class="view">${stats}<div class="results"><div class="combos">${head}${legend}${shown.map((c) => comboCard(c, total, r.sockets)).join('')}${more}
     <p class="muted small">Searched ${fmt(r.nodes)} branches in ${fmt(r.ms)} ms${r.truncated ? '; the search hit its limit, so counts are a lower bound' : ''}.</p></div>${wishlistPanel(r)}</div></div>`;
 }
 
@@ -1013,26 +1088,144 @@ function renderCompare(res, defs) {
 }
 
 /* ---------------- Sockets ---------------- */
+function rateLabel(sockets) {
+  const r = Q.rateBase(sockets, state.settings.statColors);
+  const parts = [];
+  if (r.p) parts.push(`${r.p} Prismatic`);
+  if (r.u) parts.push(`${r.u} stat`);
+  let txt = parts.join(' + ') || 'no useful sockets';
+  if (r.wasted) txt += ` · ${r.wasted} off-color`;
+  if (r.unknown) txt += ` · ${r.unknown} unknown`;
+  const cls = r.perfect ? 'good' : r.wasted ? 'meh' : 'unk';
+  return `<span class="rate ${cls}" title="${r.perfect ? 'All 3 sockets are useful' : 'Some sockets are wasted or not entered'}">${r.perfect ? 'All useful · ' : ''}${esc(txt)}</span>`;
+}
+
+/* Socket base entry form */
+const bform = { slot: 'Hat', editingId: null };
+function initBaseForm() {
+  $('#base-slot-seg').innerHTML = Q.SLOTS.map((s) => `<button type="button" data-slot="${s}" aria-pressed="false">${s}</button>`).join('');
+  for (let i = 0; i < 3; i++) $(`#bsock-${i}`).innerHTML = socketOptions();
+  setBaseSlot('Hat');
+  $('#base-slot-seg').addEventListener('click', (e) => { const b = e.target.closest('[data-slot]'); if (b) setBaseSlot(b.dataset.slot); });
+  $('#base-form').addEventListener('submit', (e) => { e.preventDefault(); submitBase(); });
+  $('#base-form').addEventListener('change', updateBaseRate);
+  $('#base-cancel').addEventListener('click', () => resetBaseForm());
+  $('#base-quick').addEventListener('input', (e) => applyBaseQuick(e.target.value));
+  $('#base-quick').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); submitBase(); } });
+  updateBaseRate();
+}
+function setBaseSlot(slot) {
+  bform.slot = slot;
+  $$('#base-slot-seg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.slot === slot)));
+}
+function readBase() {
+  return { kind: 'base', slot: bform.slot, lines: ['', '', ''], sockets: [0, 1, 2].map((i) => $(`#bsock-${i}`).value), note: $('#base-note').value.trim() };
+}
+function fillBase(it) {
+  setBaseSlot(it.slot);
+  for (let i = 0; i < 3; i++) $(`#bsock-${i}`).value = it.sockets[i] || '';
+  $('#base-note').value = it.note || '';
+  updateBaseRate();
+}
+function updateBaseRate() {
+  const socks = [0, 1, 2].map((i) => $(`#bsock-${i}`).value);
+  $('#base-rate').innerHTML = socks.some(Boolean) ? rateLabel(socks) : '';
+}
+function resetBaseForm() {
+  bform.editingId = null;
+  fillBase({ slot: bform.slot, sockets: ['', '', ''], note: '' });
+  $('#base-quick').value = '';
+  $('#base-form-title').textContent = 'Add a socket base';
+  $('#base-submit').textContent = 'Add base';
+  $('#base-cancel').hidden = true;
+  renderBases();
+}
+function applyBaseQuick(text) {
+  const toks = text.toLowerCase().split(/[\s,;|/:]+/).filter(Boolean);
+  let slot = null; const socks = [];
+  for (const t of toks) {
+    if (!slot) { const s2 = Q.parseSlot(t); if (s2) { slot = s2; continue; } }
+    const sk = Q.matchSocket(t);
+    if (sk && socks.length < 3) socks.push(sk);
+  }
+  if (slot) setBaseSlot(slot);
+  for (let i = 0; i < 3; i++) $(`#bsock-${i}`).value = socks[i] || '';
+  updateBaseRate();
+}
+function submitBase() {
+  const data = readBase();
+  if (!data.sockets.some(Boolean)) { $('#base-msg').textContent = 'Pick at least one socket first.'; return; }
+  $('#base-msg').textContent = '';
+  if (bform.editingId != null) {
+    state.sample = false;
+    const it = state.items.find((x) => x.id === bform.editingId);
+    if (it) Object.assign(it, data);
+    toast(`Saved ${data.slot} base #${bform.editingId}`);
+  } else {
+    const cleared = leaveSample();
+    const it = Object.assign({ id: state.nextId++ }, data);
+    state.items.push(it);
+    toast(cleared ? `Sample cleared. Added ${data.slot} base #${it.id}` : `Added ${data.slot} base #${it.id}`);
+  }
+  changed({ resolve: false });
+  resetBaseForm();
+  renderSockets();
+  $('#base-quick').focus();
+}
+
+let baseFilter = 'All';
+function renderBases() {
+  const bases = baseItems();
+  const counts = Object.fromEntries(Q.SLOTS.map((s) => [s, 0]));
+  bases.forEach((it) => { counts[it.slot]++; });
+  $('#base-filter').innerHTML = ['All', ...Q.SLOTS].map((s) => `<button type="button" data-bfilter="${s}" aria-pressed="${s === baseFilter}">${s}${s === 'All' ? '' : ` <span class="num muted">${counts[s]}</span>`}</button>`).join('');
+  if (!bases.length) {
+    $('#base-list').innerHTML = `<div class="empty-state"><h3>No socket bases yet</h3><p>Add the pieces you keep for their jewel sockets, for example <span class="mono">hat p r g</span> in quick entry.</p></div>`;
+    return;
+  }
+  const slots = baseFilter === 'All' ? Q.SLOTS : [baseFilter];
+  const score = (it) => { const r = Q.rateBase(it.sockets, state.settings.statColors); return (r.perfect ? 100 : 0) + r.p * 10 + r.u; };
+  $('#base-list').innerHTML = slots.map((slot) => {
+    const list = bases.filter((it) => it.slot === slot).sort((a, b) => score(b) - score(a));
+    const rows = list.map((it) => `
+      <li class="item base${it.id === bform.editingId ? ' editing' : ''}">
+        <span class="id">#${it.id}</span>
+        ${jewels(it.sockets)}
+        <span>${rateLabel(it.sockets)}</span>
+        <span class="acts">
+          <button type="button" class="btn ghost" data-act="edit" data-id="${it.id}" aria-label="Edit base #${it.id}">Edit</button>
+          <button type="button" class="btn ghost" data-act="dup" data-id="${it.id}" aria-label="Duplicate base #${it.id}">Copy</button>
+          <button type="button" class="btn ghost" data-act="del" data-id="${it.id}" aria-label="Delete base #${it.id}">Delete</button>
+        </span>
+        ${it.note ? `<span class="note">${esc(it.note)}</span>` : ''}
+      </li>`).join('');
+    return `<div class="slot-block"><div class="slot-title"><h3>${slot}</h3><span class="muted small num">${list.length} base${list.length === 1 ? '' : 's'}</span></div>
+      ${list.length ? `<ul class="items">${rows}</ul>` : `<div class="empty-slot">No ${slot.toLowerCase()} base yet.</div>`}</div>`;
+  }).join('');
+}
+$('#base-filter').addEventListener('click', (e) => { const b = e.target.closest('[data-bfilter]'); if (b) { baseFilter = b.dataset.bfilter; renderBases(); } });
+
 function renderSockets() {
   const colors = ['red', 'green', 'gray', 'blue', 'purple'];
   $('#color-picks').innerHTML = colors.map((c) => `<label><input type="checkbox" data-color="${c}" ${state.settings.statColors.includes(c) ? 'checked' : ''}> <i class="jw jw-${c}"></i> ${SOCK_NAME[c]}</label>`).join('');
-  const items = itemsPlain();
-  const withSockets = items.filter((it) => it.sockets.some(Boolean)).length;
-  if (!withSockets) {
-    $('#sockets-out').innerHTML = `<div class="panel empty-state"><h3>No sockets entered yet</h3><p>Fill in the jewel sockets when you add a piece, and the best socket base per slot shows up here.</p></div>`;
+  renderBases();
+  updateBaseRate();
+  const bases = itemsPlain().filter((it) => it.kind === 'base' && it.sockets.some(Boolean));
+  if (!bases.length) {
+    $('#sockets-out').innerHTML = `<div class="panel empty-state"><h3>Best bases per build show up here</h3><p>Once you add socket bases, this picks the best one per slot for every build.</p></div>`;
     return;
   }
   const blocks = allDefs().map((def) => {
     const T = Q.resolveTarget(def, state.settings);
-    const s = Q.solveSockets(items, T, state.settings.statColors);
+    const s = Q.solveSockets(bases, T, state.settings.statColors);
     const cards = s.slots.map((x) => `<div class="sock-card"><div class="row" style="justify-content:space-between"><b>${x.slot}</b>${x.empty ? '<span class="muted small">none</span>' : `<span class="mono small">#${x.items[0]}${x.items.length > 1 ? ` +${x.items.length - 1}` : ''}</span>`}</div>
-      ${x.empty ? '<span class="small muted">No piece with sockets entered</span>' : `${jewels(state.items.find((it) => it.id === x.items[0]).sockets)}<span class="small muted">${x.p} Prismatic · ${x.u} stat</span>`}</div>`).join('');
+      ${x.empty ? '<span class="small muted">No base for this slot yet</span>' : `${jewels(state.items.find((it) => it.id === x.items[0]).sockets)}<span class="small muted">${x.p} Prismatic · ${x.u} stat</span>`}</div>`).join('');
     const ok = s.score === 18;
     return `<div class="panel"><div class="panel-head"><div><h2>${esc(presetTitle(def))}</h2><p class="small muted">Needs ${s.prismaticNeeded} Prismatic + ${s.statNeeded} stat sockets</p></div>
       <div class="row"><span class="score ${scoreClass(s.score, 18)}">${s.score}/18</span><span class="small muted">${s.prismatic}/${s.prismaticNeeded} Prismatic · ${s.stat}/${s.statNeeded} stat${s.prismatic > s.prismaticNeeded ? ` · ${s.prismatic - s.prismaticNeeded} Prismatic wasted` : ''}</span></div></div>
       <div class="sock-grid">${cards}</div>${ok ? '' : '<p class="small muted" style="margin-top:10px">Keep an eye out for bases with more Prismatic or on-color sockets in the slots above.</p>'}</div>`;
   }).join('');
-  $('#sockets-out').innerHTML = `<div class="view">${blocks}</div>`;
+  $('#sockets-out').innerHTML = `<div class="view"><h2>Best bases per build</h2>${blocks}</div>`;
 }
 $('#color-picks').addEventListener('change', (e) => {
   const c = e.target.dataset.color;
@@ -1097,7 +1290,7 @@ function download() {
 
 /* ---------------- Screenshot scanning ---------------- */
 const TESSERACT_URL = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
-const scan = { images: [], pieces: [], busy: false, stop: false, ctl: null, engine: 'checking', sample: null, batch: 4, nextImg: 1, nextPiece: 1 };
+const scan = { kind: 'lines', images: [], pieces: [], busy: false, stop: false, ctl: null, engine: 'checking', sample: null, batch: 4, nextImg: 1, nextPiece: 1 };
 (async () => {
   try {
     if (window.claude && typeof window.claude.use === 'function') {
@@ -1122,19 +1315,22 @@ function addScanFiles(files) {
 }
 function imgById(id) { return scan.images.find((i) => i.id === id); }
 function samePiece(a, b) {
-  return a.slot === b.slot && a.lines.join() === b.lines.join() && a.sockets.join() === b.sockets.join();
+  if ((a.kind === 'base') !== (b.kind === 'base') || a.slot !== b.slot) return false;
+  return a.kind === 'base' ? a.sockets.join() === b.sockets.join() : a.lines.join() === b.lines.join();
 }
+function pieceReady(p) { return !!p.slot && (p.kind === 'base' ? p.sockets.some(Boolean) : p.lines.some(Boolean)); }
 function addScanPieces(img, list) {
   for (const raw of list) {
-    const it = Q.normalizeItem(raw, 0);
+    const it = Q.normalizeItem(Object.assign({}, raw, { kind: scan.kind }), 0);
     const warnings = (raw.warnings || []).slice();
+    if (it.kind === 'base' && !it.sockets.some(Boolean)) warnings.push('Pick the jewel colors');
     if (raw.note) warnings.push(String(raw.note).slice(0, 160));
     if (raw.confidence === 'low') warnings.push('Claude was unsure about this one');
     const dup = state.sample ? null : state.items.find((x) => samePiece(x, it));
     if (dup) warnings.push(`Looks the same as ${dup.slot} #${dup.id} already in your inventory`);
     scan.pieces.push({
-      pid: scan.nextPiece++, imgId: img.id, slot: it.slot, lines: it.lines, sockets: it.sockets,
-      include: !!it.slot && it.lines.some(Boolean) && !dup, warnings,
+      pid: scan.nextPiece++, imgId: img.id, kind: it.kind, slot: it.slot, lines: it.lines, sockets: it.sockets,
+      include: pieceReady(it) && !dup, warnings,
     });
   }
 }
@@ -1295,12 +1491,16 @@ function renderReview() {
     const im = imgById(p.imgId);
     const warn = [...p.warnings];
     if (p.include && !p.slot) warn.unshift('Pick a slot before adding');
-    return `<div class="scan-row${p.include ? '' : ' off'}${p.include && !p.slot ? ' bad' : ''}" data-pid="${p.pid}">
+    const isBase = p.kind === 'base';
+    const fields = isBase
+      ? [0, 1, 2].map((i) => `<select data-scan="sock" data-i="${i}" aria-label="Socket ${i + 1}">${socketOptions()}</select>`).join('')
+      : [0, 1, 2].map((i) => `<select data-scan="line" data-i="${i}" aria-label="Skill line ${i + 1}">${skillOptions()}</select>`).join('');
+    return `<div class="scan-row${p.include ? '' : ' off'}${p.include && !pieceReady(p) ? ' bad' : ''}" data-pid="${p.pid}">
       <input type="checkbox" data-scan="include" ${p.include ? 'checked' : ''} aria-label="Add this piece">
       ${im ? `<img class="mini" src="${im.url}" alt="Screenshot ${im.id}" title="Screenshot #${im.id}">` : '<span></span>'}
+      <select data-scan="kind" aria-label="Add as"><option value="lines"${isBase ? '' : ' selected'}>Line fodder</option><option value="base"${isBase ? ' selected' : ''}>Socket base</option></select>
       <select data-scan="slot" aria-label="Slot"><option value="">— slot —</option>${Q.SLOTS.map((s) => `<option value="${s}"${s === p.slot ? ' selected' : ''}>${s}</option>`).join('')}</select>
-      <div class="three">${[0, 1, 2].map((i) => `<select data-scan="line" data-i="${i}" aria-label="Skill line ${i + 1}">${skillOptions()}</select>`).join('')}</div>
-      <div class="three">${[0, 1, 2].map((i) => `<select data-scan="sock" data-i="${i}" aria-label="Socket ${i + 1}">${socketOptions()}</select>`).join('')}</div>
+      <div class="three">${fields}</div>
       <button type="button" class="btn ghost" data-act="scan-drop" data-id="${p.pid}" aria-label="Discard this piece">Discard</button>
       <div class="warn">${warn.map(esc).join(' · ')}</div>
     </div>`;
@@ -1324,23 +1524,36 @@ $('#scan-review').addEventListener('change', (e) => {
   if (!p || !kind) return;
   if (kind === 'include') p.include = e.target.checked;
   else if (kind === 'slot') p.slot = e.target.value;
+  else if (kind === 'kind') p.kind = e.target.value;
   else if (kind === 'line') p.lines[e.target.dataset.i] = e.target.value;
   else if (kind === 'sock') p.sockets[e.target.dataset.i] = e.target.value;
-  if (kind === 'include' || kind === 'slot') renderReview();
+  if (kind === 'include' || kind === 'slot' || kind === 'kind') renderReview();
 });
 function addScannedToInventory() {
   const chosen = scan.pieces.filter((p) => p.include);
-  const missing = chosen.filter((p) => !p.slot);
-  if (missing.length) { setScanStatus(`Pick a slot for ${missing.length} piece${missing.length === 1 ? '' : 's'} first, or untick ${missing.length === 1 ? 'it' : 'them'}.`, 'err'); renderReview(); return; }
+  const missing = chosen.filter((p) => !pieceReady(p));
+  if (missing.length) { setScanStatus(`${missing.length} ticked piece${missing.length === 1 ? ' needs' : 's need'} a slot and ${missing.length === 1 ? 'its' : 'their'} lines (fodder) or jewels (base). Fill ${missing.length === 1 ? 'it' : 'them'} in or untick ${missing.length === 1 ? 'it' : 'them'}.`, 'err'); renderReview(); return; }
   if (!chosen.length) return;
   const cleared = leaveSample();
-  for (const p of chosen) state.items.push({ id: state.nextId++, slot: p.slot, lines: p.lines.slice(), sockets: p.sockets.slice(), note: '' });
+  for (const p of chosen) {
+    const isBase = p.kind === 'base';
+    state.items.push({ id: state.nextId++, kind: isBase ? 'base' : 'lines', slot: p.slot, lines: isBase ? ['', '', ''] : p.lines.slice(), sockets: isBase ? p.sockets.slice() : ['', '', ''], note: '' });
+  }
   scan.pieces = scan.pieces.filter((p) => !p.include);
   changed({ resolve: false });
   setScanStatus(`${cleared ? 'Sample inventory cleared. ' : ''}Added ${chosen.length} piece${chosen.length === 1 ? '' : 's'} to your inventory.`, 'ok');
   toast(`Added ${chosen.length} piece${chosen.length === 1 ? '' : 's'}`);
   renderReview();
 }
+$('#scan-kind').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-kind]');
+  if (!b) return;
+  scan.kind = b.dataset.kind;
+  $$('#scan-kind button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+  $('#scan-kind-hint').textContent = scan.kind === 'base'
+    ? (scan.engine === 'ocr' ? 'Only the jewel sockets are kept. The on-device reader can\'t see jewel colors, so you pick them in the review.' : 'Only the jewel sockets are kept.')
+    : 'Only the 3 skill lines are kept.';
+});
 $('#scan-file').addEventListener('change', (e) => { addScanFiles(e.target.files || []); e.target.value = ''; });
 const drop = $('#drop');
 ['dragenter', 'dragover'].forEach((t) => document.addEventListener(t, (e) => {
@@ -1384,6 +1597,16 @@ document.addEventListener('click', (e) => {
   if (act === 'edit') {
     const it = state.items.find((x) => x.id === id);
     if (!it) return;
+    if (it.kind === 'base') {
+      bform.editingId = id;
+      fillBase(it);
+      $('#base-form-title').textContent = `Edit ${it.slot} base #${id}`;
+      $('#base-submit').textContent = 'Save changes';
+      $('#base-cancel').hidden = false;
+      renderBases();
+      $('#bsock-0').focus();
+      return;
+    }
     form.editingId = id;
     fillForm(it);
     $('#form-title').textContent = `Edit ${it.slot} #${id}`;
@@ -1394,7 +1617,7 @@ document.addEventListener('click', (e) => {
   } else if (act === 'dup') {
     const it = state.items.find((x) => x.id === id);
     if (!it) return;
-    const copy = { id: state.nextId++, slot: it.slot, lines: it.lines.slice(), sockets: it.sockets.slice(), note: it.note };
+    const copy = { id: state.nextId++, kind: it.kind, slot: it.slot, lines: it.lines.slice(), sockets: it.sockets.slice(), note: it.note };
     state.items.splice(state.items.indexOf(it) + 1, 0, copy);
     toast(`Copied #${id} as #${copy.id}`);
     changed();
@@ -1403,6 +1626,7 @@ document.addEventListener('click', (e) => {
     if (i < 0) return;
     const [gone] = state.items.splice(i, 1);
     if (form.editingId === id) resetForm();
+    if (bform.editingId === id) resetBaseForm();
     lastDeleted = { item: gone, index: i };
     toastUndo(`Deleted ${gone.slot} #${gone.id}`);
     changed();
@@ -1465,9 +1689,10 @@ function toastUndo(msg) {
 
 /* ---------------- Boot ---------------- */
 initForm();
+initBaseForm();
 renderSettings();
 renderPresetList();
-$('#badge-items').textContent = state.items.length;
+updateBadges();
 showTab(location.hash.slice(1) || 'inventory', { push: false });
 })();
 </script>

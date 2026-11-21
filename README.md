@@ -6,17 +6,17 @@ Open `index.html` in a browser. No build step and no install. Everything runs lo
 
 ## What it does
 
-- **Inventory**: log each Hat, Top, Bottom, Gloves, Shoes and Cape with its 3 Hologram skill lines and (optionally) its 3 jewel sockets. Quick entry accepts shorthand such as `gloves dl wh cd p r g`.
-- **Scan screenshots**: drop, paste (Ctrl+V) or pick screenshots of item tooltips. They are read into pieces you check and correct before they are added.
+- **Line fodder**: log each Hat, Top, Bottom, Gloves, Shoes and Cape you farm for its 3 Hologram skill lines. Quick entry accepts shorthand such as `gloves dl wh cd`.
+- **Socket bases**: a separate list for the pieces you farm for their jewel sockets (`hat p r g`). Each base is labelled (for example "All useful · 1 Prismatic + 2 stat"), and the tab picks the best base per slot for every build.
+- **Scan screenshots**: drop, paste (Ctrl+V) or pick screenshots of item tooltips, choose whether they are line fodder or socket bases, then check and correct the result before it is added.
   - On the hosted claude.ai page, Claude reads the images on your own Claude account (you are asked once to allow it), including jewel socket colors.
   - Opened locally, `index.html` uses on-device OCR ([Tesseract.js](https://github.com/naptha/tesseract.js), loaded from jsDelivr on first use, about 5 MB) and fuzzy-matches the skill names. Socket colors are not detected there; fill them in during review.
 - **Solve**: picks one piece per slot and scores the set against a target build (max 18). It lists:
-  - exact 18/18 sets, including interchangeable item variants;
+  - exact 18/18 sets, including interchangeable item variants, with an Orb plan (which fodder's lines go onto which socket base);
   - the closest partial matches, with every line marked as counting, over the gear cap, or not part of the build, plus what is missing and which slot to replace with which 3 lines;
   - **One piece away**: the single pieces (slot + lines) that would finish an 18/18 with what you already own. These are your farming targets.
 - **Check all presets**: runs every meta build at once and ranks them by how close your inventory is.
-- **Socket bases**: picks the best socket base per slot for each build (one Prismatic per maxed skill, colored stat jewels for the rest; extra Prismatics and off-color sockets count as waste). Line fodder and socket bases are separate pools: once the lines make 18/18, transfer them onto the bases with Orbs.
-- **Import / Export**: JSON (inventory + settings) or CSV (`slot,line1,line2,line3,socket1,socket2,socket3,note`; full skill names or codes).
+- **Import / Export**: JSON (inventory + settings) or CSV (`slot,line1,line2,line3,socket1,socket2,socket3,note,type` with type `fodder` or `base`; full skill names or codes).
 
 ## Safe to use while MapleStory is running?
 

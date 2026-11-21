@@ -1,0 +1,11 @@
+{
+  "name": "quanah-hologram-solver",
+  "version": "1.0.0",
+  "private": true,
+  "description": "18/18 Hologram gear solver for MapleStory Event World: Quanah",
+  "scripts": {
+    "test": "node test/solver.test.js",
+    "build:artifact": "node scripts/build-artifact.js"
+  },
+  "license": "MIT"
+}

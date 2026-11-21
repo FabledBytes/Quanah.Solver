@@ -1,0 +1,1104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- APP:START -->
+<title>Quanah Hologram Solver</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: sticky header + tabbed workbench; inventory entry beside the list, results as 6-slot gear cards. */
+:root {
+  --bg: #eef1f6; --surface: #ffffff; --surface-2: #f5f7fb; --line: #d6dde8; --line-strong: #b9c4d6;
+  --fg: #121a2b; --muted: #5a6680; --faint: #8a95ab;
+  --accent: #0a6f86; --accent-fg: #ffffff; --accent-soft: #dcf0f4;
+  --sec: #9a5b07; --sec-soft: #fbecd5;
+  --cls: #6447c4; --cls-soft: #ece7fb;
+  --ok: #1b7a45; --ok-soft: #dcf2e4;
+  --bad: #b3243b; --bad-soft: #fbe3e7;
+  --warn: #9a5b07; --warn-soft: #fbecd5;
+  --jw-red: #d9434f; --jw-green: #2f9e5a; --jw-gray: #8b93a3; --jw-blue: #3b74d6; --jw-purple: #8b4fd1;
+  --shadow: 0 1px 2px rgb(18 26 43 / 6%), 0 4px 14px rgb(18 26 43 / 5%);
+  --font-display: "Chakra Petch", "Segoe UI", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --r: 10px; --r-sm: 6px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1320; --surface: #141c2d; --surface-2: #1a2438; --line: #29354d; --line-strong: #3a4865;
+    --fg: #e4eaf5; --muted: #98a5bf; --faint: #6c7a96;
+    --accent: #5ccfe3; --accent-fg: #06222b; --accent-soft: #123a49;
+    --sec: #f0b55a; --sec-soft: #3a2a12;
+    --cls: #b6a5ff; --cls-soft: #2b2350;
+    --ok: #5bd68e; --ok-soft: #133524;
+    --bad: #ff7d90; --bad-soft: #43192a;
+    --warn: #f0b55a; --warn-soft: #3a2a12;
+    --shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 6px 18px rgb(0 0 0 / 25%);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d1320; --surface: #141c2d; --surface-2: #1a2438; --line: #29354d; --line-strong: #3a4865;
+  --fg: #e4eaf5; --muted: #98a5bf; --faint: #6c7a96;
+  --accent: #5ccfe3; --accent-fg: #06222b; --accent-soft: #123a49;
+  --sec: #f0b55a; --sec-soft: #3a2a12;
+  --cls: #b6a5ff; --cls-soft: #2b2350;
+  --ok: #5bd68e; --ok-soft: #133524;
+  --bad: #ff7d90; --bad-soft: #43192a;
+  --warn: #f0b55a; --warn-soft: #3a2a12;
+  --shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 6px 18px rgb(0 0 0 / 25%);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  margin: 0; background: var(--bg); color: var(--fg);
+  font: 15px/1.5 var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--surface); }
+.wrap { max-width: 1240px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; margin: 0; line-height: 1.2; letter-spacing: .01em; }
+h2 { font-size: 1.15rem; font-weight: 600; }
+h3 { font-size: 1rem; font-weight: 600; }
+p { margin: 0; }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.muted { color: var(--muted); }
+.small { font-size: .85rem; }
+.mono, .num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.eyebrow { font-family: var(--font-display); font-size: .72rem; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+
+/* Header */
+.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--surface); border-bottom: 1px solid var(--line); }
+.top-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 20px; padding-block: 12px 8px; }
+.brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.brand-mark { width: 34px; height: 34px; flex: none; border-radius: 8px; background: conic-gradient(from 210deg, #5ccfe3, #8f7cff, #ff8ad8, #ffd36b, #6ee7a8, #5ccfe3); display: grid; place-items: center; }
+.brand-mark span { width: 20px; height: 20px; border-radius: 4px; background: var(--surface); display: grid; place-items: center; font: 700 .72rem var(--font-display); color: var(--fg); }
+.brand h1 { font-size: 1.25rem; font-weight: 700; }
+.brand p { font-size: .8rem; color: var(--muted); }
+.settings { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; font-size: .88rem; }
+.settings label { display: inline-flex; align-items: center; gap: 6px; }
+.tabs { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; }
+.tabs::-webkit-scrollbar { display: none; }
+.tab { appearance: none; border: 0; background: none; padding: 9px 14px 10px; cursor: pointer; color: var(--muted); font-weight: 500; white-space: nowrap; border-bottom: 2px solid transparent; }
+.tab:hover { color: var(--fg); }
+.tab[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--accent); }
+.tab .badge { font: 500 .72rem var(--font-mono); background: var(--surface-2); border: 1px solid var(--line); border-radius: 99px; padding: 0 6px; margin-left: 4px; }
+
+main { padding-block: 22px 60px; }
+.view { display: grid; gap: 18px; }
+
+/* Controls */
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 18px; box-shadow: var(--shadow); min-width: 0; }
+.panel-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 12px; margin-bottom: 14px; }
+.btn { appearance: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid var(--line-strong); background: var(--surface); padding: 7px 13px; border-radius: var(--r-sm); cursor: pointer; font-weight: 500; font-size: .9rem; line-height: 1.3; }
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+.btn.primary:hover { filter: brightness(1.07); }
+.btn.danger { color: var(--bad); }
+.btn.danger:hover { border-color: var(--bad); }
+.btn.ghost { border-color: transparent; background: none; padding: 4px 8px; color: var(--muted); }
+.btn.ghost:hover { color: var(--fg); background: var(--surface-2); }
+.btn:disabled { opacity: .5; cursor: default; }
+select, input[type="text"], input[type="number"], textarea {
+  background: var(--surface-2); border: 1px solid var(--line-strong); border-radius: var(--r-sm); padding: 7px 9px; min-width: 0;
+}
+select:hover, input:hover, textarea:hover { border-color: var(--accent); }
+textarea { width: 100%; font: .82rem/1.45 var(--font-mono); resize: vertical; }
+.field { display: grid; gap: 5px; min-width: 0; }
+.field > span { font-size: .8rem; color: var(--muted); font-weight: 500; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.seg { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
+.seg button { appearance: none; border: 1px solid var(--line-strong); background: var(--surface-2); border-radius: var(--r-sm); padding: 7px 2px; cursor: pointer; font-size: .84rem; font-weight: 500; }
+.seg button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+.three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.three select { width: 100%; }
+
+/* Chips */
+.chip { display: inline-flex; align-items: center; gap: 4px; border-radius: 5px; padding: 1px 7px; font-size: .8rem; font-weight: 500; line-height: 1.55; white-space: nowrap; border: 1px solid transparent; }
+.g-core { background: var(--accent-soft); color: var(--accent); }
+.g-secondary { background: var(--sec-soft); color: var(--sec); }
+.g-class { background: var(--cls-soft); color: var(--cls); }
+.g-junk { background: var(--surface-2); color: var(--muted); border-color: var(--line); }
+.g-any { background: var(--surface-2); color: var(--fg); border: 1px dashed var(--line-strong); }
+.st-empty { background: none; color: var(--faint); border: 1px dashed var(--line-strong); }
+.st-over, .st-off, .st-junk { text-decoration: line-through; text-decoration-thickness: 1.5px; }
+.st-over { background: var(--warn-soft); color: var(--warn); }
+.st-off, .st-junk { background: var(--surface-2); color: var(--faint); border-color: var(--line); }
+.chip .n { font-family: var(--font-mono); font-size: .75rem; opacity: .85; }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.jewels { display: inline-flex; gap: 3px; }
+.jw { width: 13px; height: 13px; border-radius: 3px; display: inline-block; border: 1px solid rgb(0 0 0 / 12%); }
+.jw-prismatic { background: conic-gradient(#5ccfe3, #8f7cff, #ff8ad8, #ffd36b, #6ee7a8, #5ccfe3); }
+.jw-red { background: var(--jw-red); } .jw-green { background: var(--jw-green); } .jw-gray { background: var(--jw-gray); }
+.jw-blue { background: var(--jw-blue); } .jw-purple { background: var(--jw-purple); }
+.jw-none { background: none; border: 1px dashed var(--line-strong); }
+
+/* Inventory */
+.inv-layout { display: grid; grid-template-columns: minmax(300px, 380px) minmax(0, 1fr); gap: 18px; align-items: start; }
+.entry { position: sticky; top: 120px; display: grid; gap: 14px; }
+.quick input { width: 100%; font-family: var(--font-mono); font-size: .85rem; }
+.hint { font-size: .78rem; color: var(--muted); }
+.banner { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; background: var(--accent-soft); color: var(--fg); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 16px; }
+.slot-filter { display: flex; flex-wrap: wrap; gap: 4px; }
+.slot-filter button { appearance: none; border: 1px solid var(--line); background: var(--surface); border-radius: 99px; padding: 3px 11px; cursor: pointer; font-size: .82rem; }
+.slot-filter button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+.slot-block + .slot-block { margin-top: 16px; }
+.slot-title { display: flex; align-items: baseline; gap: 8px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+.slot-title h3 { font-size: .95rem; }
+.items { list-style: none; margin: 0; padding: 0; }
+.item { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto auto; gap: 4px 12px; align-items: center; padding: 7px 4px; border-bottom: 1px solid var(--line); }
+.item:hover { background: var(--surface-2); }
+.item.editing { background: var(--accent-soft); }
+.item .id { font: 500 .8rem var(--font-mono); color: var(--muted); }
+.item .note { grid-column: 2 / -1; font-size: .78rem; color: var(--muted); margin-top: -2px; }
+.item .acts { display: flex; gap: 0; }
+.empty-slot { padding: 10px 4px; color: var(--faint); font-size: .85rem; }
+
+/* Solve */
+.presets { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 8px; }
+.preset { appearance: none; text-align: left; border: 1px solid var(--line); background: var(--surface); border-radius: var(--r); padding: 11px 13px; cursor: pointer; display: grid; gap: 2px; }
+.preset:hover { border-color: var(--accent); }
+.preset[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); background: var(--accent-soft); }
+.preset b { font-family: var(--font-display); font-weight: 600; font-size: .98rem; }
+.preset span { font-size: .8rem; color: var(--muted); }
+.preset .p { font: 500 .75rem var(--font-mono); color: var(--fg); }
+.target { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-top: 14px; }
+.sock-need { display: inline-flex; align-items: center; gap: 6px; font-size: .85rem; }
+.custom { margin-top: 14px; display: grid; gap: 12px; border-top: 1px solid var(--line); padding-top: 14px; }
+.custom-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px 12px; }
+.custom-grid label { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: .88rem; }
+.custom-grid input { width: 62px; text-align: center; }
+.errors { color: var(--bad); font-size: .85rem; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; display: grid; gap: 2px; }
+.stat .v { font: 600 1.6rem/1.15 var(--font-display); font-variant-numeric: tabular-nums; }
+.stat .v small { font-size: .9rem; color: var(--muted); font-weight: 500; }
+.stat.good .v { color: var(--ok); }
+.results { display: grid; grid-template-columns: minmax(0, 1.75fr) minmax(280px, 1fr); gap: 18px; align-items: start; }
+.combos { display: grid; gap: 12px; min-width: 0; }
+.combo { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow); overflow: hidden; }
+.combo-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 10px 14px; border-bottom: 1px solid var(--line); background: var(--surface-2); }
+.score { font: 600 .9rem var(--font-mono); padding: 2px 9px; border-radius: 99px; }
+.score.s-exact { background: var(--ok); color: var(--surface); }
+.score.s-near { background: var(--warn-soft); color: var(--warn); }
+.score.s-far { background: var(--bad-soft); color: var(--bad); }
+.combo-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.cell { padding: 10px 14px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); display: grid; gap: 6px; align-content: start; min-width: 0; }
+.cell:nth-child(3n) { border-right: 0; }
+.cell:nth-last-child(-n+3) { border-bottom: 0; }
+.cell-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; font-size: .85rem; }
+.cell-head b { font-family: var(--font-display); font-weight: 600; }
+.cell-head .alt { color: var(--muted); font-size: .76rem; }
+.fix-swatch { background: color-mix(in srgb, var(--warn-soft) 45%, transparent); border-color: var(--line); color: var(--fg); }
+.cell.fixable { background: color-mix(in srgb, var(--warn-soft) 45%, transparent); }
+.cell-lines { display: flex; flex-wrap: wrap; gap: 4px; }
+.combo-foot { padding: 10px 14px; border-top: 1px solid var(--line); display: grid; gap: 6px; font-size: .86rem; }
+.combo-foot .row { gap: 6px; }
+.label { color: var(--muted); font-size: .8rem; font-weight: 500; min-width: 64px; }
+.wish { position: sticky; top: 120px; }
+.wish ol { list-style: none; margin: 0; padding: 0; display: grid; }
+.wish li { padding: 10px 0; border-bottom: 1px solid var(--line); display: grid; gap: 5px; }
+.wish li:last-child { border-bottom: 0; }
+.wish .w-head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.wish .w-head b { font-family: var(--font-display); font-weight: 600; }
+.wish details summary { cursor: pointer; font-size: .78rem; color: var(--muted); }
+.wish details p { font-size: .78rem; color: var(--muted); font-family: var(--font-mono); margin-top: 4px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: .78rem; color: var(--muted); align-items: center; }
+.empty-state { text-align: center; padding: 34px 16px; color: var(--muted); display: grid; gap: 10px; justify-items: center; }
+.spinner { width: 18px; height: 18px; border: 2px solid var(--line-strong); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; display: inline-block; vertical-align: -4px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Compare */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+th { text-align: left; font-weight: 500; color: var(--muted); font-size: .78rem; padding: 8px 10px; border-bottom: 1px solid var(--line-strong); white-space: nowrap; }
+td { padding: 11px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+tr.leader td { background: var(--accent-soft); }
+.bar { width: 120px; height: 8px; border-radius: 99px; background: var(--surface-2); border: 1px solid var(--line); overflow: hidden; margin-top: 6px; }
+.bar i { display: block; height: 100%; background: var(--accent); }
+.bar.full i { background: var(--ok); }
+.tag { display: inline-block; font-size: .72rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; border-radius: 4px; padding: 1px 6px; background: var(--accent); color: var(--accent-fg); margin-left: 6px; vertical-align: 1px; }
+
+/* Sockets */
+.sock-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
+.sock-card { border: 1px solid var(--line); border-radius: var(--r); padding: 12px; display: grid; gap: 6px; background: var(--surface-2); }
+.sock-card b { font-family: var(--font-display); font-weight: 600; }
+.colors { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+.colors label { display: inline-flex; align-items: center; gap: 6px; font-size: .9rem; }
+
+/* Data */
+.data-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 18px; }
+.msg { font-size: .86rem; }
+.msg.ok { color: var(--ok); } .msg.err { color: var(--bad); }
+
+.toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 9px 16px; border-radius: 8px; font-size: .88rem; z-index: 20; box-shadow: var(--shadow); max-width: calc(100vw - 32px); }
+
+@media (max-width: 980px) {
+  .inv-layout, .results { grid-template-columns: minmax(0, 1fr); }
+  .entry, .wish { position: static; }
+}
+@media (max-width: 620px) {
+  .combo-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cell:nth-child(3n) { border-right: 1px solid var(--line); }
+  .cell:nth-child(2n) { border-right: 0; }
+  .cell:nth-last-child(-n+3) { border-bottom: 1px solid var(--line); }
+  .cell:nth-last-child(-n+2) { border-bottom: 0; }
+  .item { grid-template-columns: 38px minmax(0, 1fr) auto; }
+  .item .jewels { grid-column: 2; }
+  .item .acts { grid-column: 3; grid-row: 1; }
+  .seg { grid-template-columns: repeat(3, 1fr); }
+}
+@media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 3s; } }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <div class="top-row">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true"><span>18</span></div>
+        <div>
+          <h1>Quanah Hologram Solver</h1>
+          <p>Event World: Quanah · Libae's Supercharged Equipment · 6 pieces × 3 lines</p>
+        </div>
+      </div>
+      <div class="settings">
+        <label title="Uses M.ATT Enhancement instead of ATT Enhancement in every build"><input type="checkbox" id="set-mage"> I play a Magician (M.ATT)</label>
+        <label>Own class line
+          <select id="set-own"></select>
+        </label>
+      </div>
+    </div>
+    <nav class="tabs" role="tablist" aria-label="Sections">
+      <button class="tab" role="tab" data-tab="inventory" id="tab-inventory">Inventory <span class="badge" id="badge-items">0</span></button>
+      <button class="tab" role="tab" data-tab="solve" id="tab-solve">Solve</button>
+      <button class="tab" role="tab" data-tab="compare" id="tab-compare">Check all presets</button>
+      <button class="tab" role="tab" data-tab="sockets" id="tab-sockets">Socket bases</button>
+      <button class="tab" role="tab" data-tab="data" id="tab-data">Import / Export</button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <!-- INVENTORY -->
+  <section class="view" id="view-inventory" hidden>
+    <div class="banner" id="sample-banner" hidden>
+      <p><b>This is a sample inventory</b> so you can try the solver right away. Clear it to start logging your own drops.</p>
+      <button class="btn" data-act="clear-sample">Clear sample</button>
+    </div>
+    <div class="inv-layout">
+      <form class="panel entry" id="item-form" autocomplete="off">
+        <div class="panel-head" style="margin-bottom:0">
+          <h2 id="form-title">Add a piece</h2>
+          <button type="button" class="btn ghost" id="form-cancel" hidden>Cancel edit</button>
+        </div>
+        <label class="field quick">
+          <span>Quick entry</span>
+          <input type="text" id="quick" placeholder="gloves dl wh cd  p r g" spellcheck="false">
+          <span class="hint">Type a slot, up to 3 skills and up to 3 sockets, then press Enter. Codes: dl wh reg att matt cd dmg war mag arc thf pir · sockets p r g gray b pu</span>
+        </label>
+        <div class="field">
+          <span>Armor slot</span>
+          <div class="seg" id="slot-seg" role="group" aria-label="Armor slot"></div>
+        </div>
+        <div class="field">
+          <span>Hologram skill lines</span>
+          <div class="three">
+            <select id="line-0" aria-label="Skill line 1"></select>
+            <select id="line-1" aria-label="Skill line 2"></select>
+            <select id="line-2" aria-label="Skill line 3"></select>
+          </div>
+        </div>
+        <div class="field">
+          <span>Jewel sockets <span class="muted">(optional, for socket bases)</span></span>
+          <div class="three">
+            <select id="sock-0" aria-label="Socket 1"></select>
+            <select id="sock-1" aria-label="Socket 2"></select>
+            <select id="sock-2" aria-label="Socket 3"></select>
+          </div>
+        </div>
+        <label class="field">
+          <span>Note</span>
+          <input type="text" id="note" maxlength="200" placeholder="e.g. Socket base, keep">
+        </label>
+        <div class="row">
+          <button type="submit" class="btn primary" id="form-submit">Add piece</button>
+          <span class="hint" id="form-msg"></span>
+        </div>
+      </form>
+
+      <div class="panel" style="min-width:0">
+        <div class="panel-head">
+          <h2>Your pieces</h2>
+          <div class="slot-filter" id="slot-filter"></div>
+        </div>
+        <div id="inv-list"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SOLVE -->
+  <section class="view" id="view-solve" hidden>
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Target build</h2>
+        <button class="btn primary" data-act="solve">Solve again</button>
+      </div>
+      <div class="presets" id="preset-list"></div>
+      <div class="custom" id="custom-editor" hidden></div>
+      <div class="target" id="target-strip"></div>
+    </div>
+    <div id="solve-out"></div>
+  </section>
+
+  <!-- COMPARE -->
+  <section class="view" id="view-compare" hidden>
+    <div class="panel">
+      <div class="panel-head">
+        <div>
+          <h2>Which build is your inventory closest to?</h2>
+          <p class="muted small">Runs every meta preset (and your custom build, if it adds up to 18) against your current pieces.</p>
+        </div>
+        <button class="btn primary" data-act="compare">Check all presets</button>
+      </div>
+      <div id="compare-out"></div>
+    </div>
+  </section>
+
+  <!-- SOCKETS -->
+  <section class="view" id="view-sockets" hidden>
+    <div class="panel">
+      <div class="panel-head">
+        <div>
+          <h2>Socket bases</h2>
+          <p class="muted small" style="max-width:70ch">Prismatic jewels only boost a Hologram skill that is already 3/3 on gear, from Lv. 3 to Lv. 8. A build needs one Prismatic per maxed skill; every other socket should be a colored stat jewel for your class. Once your line fodder makes an 18/18, use Orbs to move each piece's 3 lines onto the socket base of the same slot.</p>
+        </div>
+      </div>
+      <div class="field">
+        <span>Useful stat colors for your class</span>
+        <div class="colors" id="color-picks"></div>
+        <span class="hint">STR classes such as Shade use Red, Green and Gray. Off-color sockets count as wasted.</span>
+      </div>
+    </div>
+    <div id="sockets-out"></div>
+  </section>
+
+  <!-- DATA -->
+  <section class="view" id="view-data" hidden>
+    <div class="data-grid">
+      <div class="panel" style="display:grid;gap:12px">
+        <h2>Export</h2>
+        <p class="muted small">Your inventory saves automatically in this browser. Export it to keep a backup or move it to another device.</p>
+        <div class="row">
+          <label><input type="radio" name="exp-fmt" value="json" checked> JSON</label>
+          <label><input type="radio" name="exp-fmt" value="csv"> CSV (spreadsheet)</label>
+        </div>
+        <textarea id="export-text" rows="10" readonly></textarea>
+        <div class="row">
+          <button class="btn primary" data-act="copy-export">Copy</button>
+          <button class="btn" data-act="download-export" id="download-btn">Download file</button>
+          <span class="msg" id="export-msg"></span>
+        </div>
+      </div>
+      <div class="panel" style="display:grid;gap:12px">
+        <h2>Import</h2>
+        <p class="muted small">Paste a JSON export or CSV, or pick a file. CSV columns: <span class="mono">slot, line1, line2, line3, socket1, socket2, socket3, note</span>. Skill names or codes both work.</p>
+        <textarea id="import-text" rows="8" placeholder="slot,line1,line2,line3,socket1,socket2,socket3,note&#10;Hat,Dimensional Leap,White Hole,Registry,Prismatic,Red,Green,"></textarea>
+        <div class="row">
+          <input type="file" id="import-file" accept=".json,.csv,.txt,application/json,text/csv">
+        </div>
+        <div class="row">
+          <label><input type="radio" name="imp-mode" value="add" checked> Add to inventory</label>
+          <label><input type="radio" name="imp-mode" value="replace"> Replace inventory</label>
+        </div>
+        <div class="row">
+          <button class="btn primary" data-act="import">Import</button>
+          <span class="msg" id="import-msg"></span>
+        </div>
+      </div>
+      <div class="panel" style="display:grid;gap:12px">
+        <h2>Reset</h2>
+        <p class="muted small">Remove every piece from this browser, or load the sample inventory again.</p>
+        <div class="row" id="reset-row">
+          <button class="btn danger" data-act="ask-clear">Clear inventory</button>
+          <button class="btn" data-act="load-sample">Load sample inventory</button>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="toast" id="toast" hidden role="status"></div>
+
+<script src="solver.js"></script>
+<script>
+(() => {
+'use strict';
+const Q = window.QuanahSolver;
+const STORE_KEY = 'quanah-solver-v1';
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+const LABEL = {
+  DL: 'Dim. Leap', WH: 'White Hole', REG: 'Registry', ATT: 'ATT Enh.', MATT: 'M.ATT Enh.',
+  CD: 'Crit Dmg', DMG: 'Damage', WAR: 'Warrior', MAG: 'Mage', ARC: 'Archer', THF: 'Thief', PIR: 'Pirate', OTHER: 'Other',
+};
+const STATUS_TEXT = { used: '', over: ' — over the gear cap, wasted', off: ' — not part of this build, wasted', junk: ' — not a useful skill', empty: '' };
+const SOCK_NAME = Object.fromEntries(Q.SOCKETS.map((s) => [s.key, s.name]));
+
+/* ---------------- State ---------------- */
+function defaultSettings() {
+  const t = Q.PRESETS[0].targets;
+  return {
+    mage: false, ownClass: 'PIR', statColors: Q.DEFAULT_STAT_COLORS.slice(), presetId: 'traditional',
+    custom: { targets: { DL: 3, WH: 3, REG: 3, ATT: 3, CD: 1, WAR: 1, MAG: 1, ARC: 1, THF: 1, PIR: 1 }, anyClass: 0 },
+  };
+}
+function makeSample() {
+  let seed = 20261121;
+  const rnd = () => ((seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648);
+  const pickW = (arr) => { const tot = arr.reduce((a, [, w]) => a + w, 0); let x = rnd() * tot; for (const [k, w] of arr) { if ((x -= w) < 0) return k; } return arr[0][0]; };
+  const lineW = [['DL', 3], ['WH', 3], ['REG', 3], ['ATT', 3], ['CD', 2.5], ['DMG', 2.5], ['WAR', 1], ['MAG', 1], ['ARC', 1], ['THF', 1], ['PIR', 1], ['OTHER', 3]];
+  const sockW = [['prismatic', 1.2], ['red', 1.5], ['green', 1.5], ['gray', 1.5], ['blue', 1.3], ['purple', 1.3]];
+  const items = [];
+  let id = 1;
+  const planted = {
+    Hat: ['DL', 'WH', 'WAR'], Top: ['REG', 'ATT', 'MAG'], Bottom: ['DL', 'REG', 'CD'],
+    Gloves: ['WH', 'ATT', 'ARC'], Shoes: ['DL', 'ATT', 'THF'], Cape: ['WH', 'REG', 'PIR'],
+  };
+  for (const slot of Q.SLOTS) {
+    const n = 4 + Math.floor(rnd() * 3);
+    const plantAt = Math.floor(rnd() * n);
+    for (let k = 0; k < n; k++) {
+      const lines = k === plantAt ? planted[slot].slice() : [0, 1, 2].map(() => pickW(lineW));
+      const sockets = [0, 1, 2].map(() => pickW(sockW));
+      items.push({ id: id++, slot, lines, sockets, note: '' });
+    }
+    // One clean socket base per slot.
+    items.push({ id: id++, slot, lines: [pickW(lineW), 'OTHER', 'OTHER'], sockets: ['prismatic', 'red', 'green'], note: 'Socket base' });
+  }
+  return { items, nextId: id };
+}
+function sampleState() {
+  const s = makeSample();
+  return { items: s.items, nextId: s.nextId, settings: defaultSettings(), sample: true };
+}
+function load() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (!raw) return null;
+    const d = JSON.parse(raw);
+    if (!d || !Array.isArray(d.items)) return null;
+    const items = d.items.map((it) => Q.normalizeItem(it, it.id)).filter((it) => it.slot && Number.isFinite(it.id));
+    const nextId = Math.max(d.nextId || 1, ...items.map((i) => i.id + 1), 1);
+    return { items, nextId, settings: Object.assign(defaultSettings(), d.settings || {}), sample: !!d.sample };
+  } catch (e) { return null; }
+}
+let state = load() || sampleState();
+let version = 0; // bumps on any change that affects results
+function save() {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify({ version: 1, items: state.items, nextId: state.nextId, settings: state.settings, sample: state.sample })); } catch (e) { /* storage unavailable */ }
+}
+function changed({ resolve = true } = {}) {
+  version++;
+  save();
+  $('#badge-items').textContent = state.items.length;
+  if (resolve) refreshActive();
+}
+
+/* ---------------- Worker ---------------- */
+let worker = null, seq = 0;
+const pending = new Map();
+function runLocal(fn, args) {
+  return new Promise((res, rej) => setTimeout(() => { try { res(Q[fn](...args)); } catch (e) { rej(e); } }, 10));
+}
+try {
+  worker = new Worker('worker.js');
+  worker.onmessage = (e) => {
+    const p = pending.get(e.data.id);
+    if (!p) return;
+    pending.delete(e.data.id);
+    if (e.data.error) p.reject(new Error(e.data.error)); else p.resolve(e.data.result);
+  };
+  worker.onerror = (ev) => {
+    if (ev && ev.preventDefault) ev.preventDefault();
+    try { worker.terminate(); } catch (e) { /* ignore */ }
+    worker = null;
+    for (const [id, p] of pending) { pending.delete(id); runLocal(p.fn, p.args).then(p.resolve, p.reject); }
+  };
+} catch (e) { worker = null; }
+function run(fn, ...args) {
+  if (!worker) return runLocal(fn, args);
+  return new Promise((resolve, reject) => {
+    const id = ++seq;
+    pending.set(id, { resolve, reject, fn, args });
+    worker.postMessage({ id, fn, args });
+  });
+}
+
+/* ---------------- Helpers ---------------- */
+function presetDef(id) {
+  if (id === 'custom') return { id: 'custom', name: 'Custom build', tagline: 'Your own 18 lines', targets: state.settings.custom.targets, anyClass: state.settings.custom.anyClass };
+  return Q.PRESETS.find((p) => p.id === id) || Q.PRESETS[0];
+}
+function allDefs() {
+  const defs = Q.PRESETS.slice();
+  const c = presetDef('custom');
+  if (Q.resolveTarget(c, state.settings).valid) defs.push(c);
+  return defs;
+}
+function presetTitle(def) {
+  if (def.id === 'own-class') return `Class-Specific (${Q.SKILL_BY_KEY[state.settings.ownClass].name})`;
+  return def.name;
+}
+function itemsPlain() { return state.items.map((it) => ({ id: it.id, slot: it.slot, lines: it.lines, sockets: it.sockets })); }
+function chip(key, status) {
+  if (!key) return `<span class="chip st-empty" title="Empty line">empty</span>`;
+  const s = Q.SKILL_BY_KEY[key] || Q.SKILL_BY_KEY.OTHER;
+  const st = status && status !== 'used' ? ` st-${status}` : '';
+  return `<span class="chip g-${s.group}${st}" title="${esc(s.name + (STATUS_TEXT[status] || ''))}">${esc(LABEL[s.key])}</span>`;
+}
+function countChip(key, n) {
+  const s = Q.SKILL_BY_KEY[key];
+  return `<span class="chip g-${s.group}" title="${esc(s.name)}">${esc(LABEL[key])} <span class="n">×${n}</span></span>`;
+}
+function jewels(socks) {
+  return `<span class="jewels">${(socks || []).map((s) => `<i class="jw jw-${s || 'none'}" title="${esc(s ? SOCK_NAME[s] : 'Unknown / not entered')}"></i>`).join('')}</span>`;
+}
+function classOptLabel(opts) { return opts.map((k) => LABEL[k]).join(' / '); }
+function needChips(need, anyClass, classOptions, free) {
+  let h = need.map((k) => chip(k)).join('');
+  for (let i = 0; i < anyClass; i++) h += `<span class="chip g-class" title="Any class line not already in the set">${esc(classOptions && classOptions.length ? classOptLabel(classOptions) : 'Any class')}</span>`;
+  for (let i = 0; i < free; i++) h += `<span class="chip g-any" title="This line can be anything">any line</span>`;
+  return h;
+}
+function scoreClass(s, total) { return s === total ? 's-exact' : s >= total - 2 ? 's-near' : 's-far'; }
+let toastTimer = 0;
+function toast(msg) {
+  const t = $('#toast');
+  t.textContent = msg; t.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.hidden = true; }, 2600);
+}
+const fmt = (n) => Number(n).toLocaleString('en-US');
+
+/* ---------------- Header settings ---------------- */
+function renderSettings() {
+  $('#set-mage').checked = !!state.settings.mage;
+  $('#set-own').innerHTML = Q.CLASS_KEYS.map((k) => `<option value="${k}"${k === state.settings.ownClass ? ' selected' : ''}>${esc(Q.SKILL_BY_KEY[k].name)}</option>`).join('');
+}
+$('#set-mage').addEventListener('change', (e) => { state.settings.mage = e.target.checked; renderPresetList(); changed(); });
+$('#set-own').addEventListener('change', (e) => { state.settings.ownClass = e.target.value; renderPresetList(); changed(); });
+
+/* ---------------- Tabs ---------------- */
+const TABS = ['inventory', 'solve', 'compare', 'sockets', 'data'];
+let activeTab = 'inventory';
+function showTab(name, { push = true } = {}) {
+  if (!TABS.includes(name)) name = 'inventory';
+  activeTab = name;
+  for (const t of TABS) {
+    $(`#view-${t}`).hidden = t !== name;
+    $(`#tab-${t}`).setAttribute('aria-selected', String(t === name));
+  }
+  if (push && location.hash !== `#${name}`) {
+    try { history.replaceState(null, '', `#${name}`); } catch (e) { location.hash = name; }
+  }
+  refreshActive();
+}
+$$('.tab').forEach((b) => b.addEventListener('click', () => showTab(b.dataset.tab)));
+window.addEventListener('hashchange', () => showTab(location.hash.slice(1), { push: false }));
+function refreshActive() {
+  if (activeTab === 'inventory') renderInventory();
+  else if (activeTab === 'solve') { renderTarget(); solveNow(); }
+  else if (activeTab === 'compare') compareNow();
+  else if (activeTab === 'sockets') renderSockets();
+  else if (activeTab === 'data') renderExport();
+}
+
+/* ---------------- Inventory: entry form ---------------- */
+const form = { slot: 'Hat', editingId: null };
+function skillOptions() {
+  const groups = [['Core scaling', 'core'], ['Secondary damage', 'secondary'], ['Class lines (cap 1)', 'class']];
+  let h = '<option value="">— empty —</option>';
+  for (const [label, g] of groups) {
+    h += `<optgroup label="${label}">` + Q.SKILLS.filter((s) => s.group === g).map((s) => `<option value="${s.key}">${esc(s.name)}</option>`).join('') + '</optgroup>';
+  }
+  return h + '<option value="OTHER">Other / useless skill</option>';
+}
+function socketOptions() {
+  return '<option value="">— unknown —</option>' + Q.SOCKETS.map((s) => `<option value="${s.key}">${esc(s.name)}</option>`).join('');
+}
+function initForm() {
+  $('#slot-seg').innerHTML = Q.SLOTS.map((s) => `<button type="button" data-slot="${s}" aria-pressed="false">${s}</button>`).join('');
+  for (let i = 0; i < 3; i++) { $(`#line-${i}`).innerHTML = skillOptions(); $(`#sock-${i}`).innerHTML = socketOptions(); }
+  setFormSlot('Hat');
+  $('#slot-seg').addEventListener('click', (e) => { const b = e.target.closest('[data-slot]'); if (b) setFormSlot(b.dataset.slot); });
+  $('#item-form').addEventListener('submit', (e) => { e.preventDefault(); submitForm(); });
+  $('#form-cancel').addEventListener('click', () => resetForm());
+  $('#quick').addEventListener('input', (e) => applyQuick(e.target.value));
+  $('#quick').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); submitForm(); } });
+}
+function setFormSlot(slot) {
+  form.slot = slot;
+  $$('#slot-seg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.slot === slot)));
+}
+function readForm() {
+  return {
+    slot: form.slot,
+    lines: [0, 1, 2].map((i) => $(`#line-${i}`).value),
+    sockets: [0, 1, 2].map((i) => $(`#sock-${i}`).value),
+    note: $('#note').value.trim(),
+  };
+}
+function fillForm(it) {
+  setFormSlot(it.slot);
+  for (let i = 0; i < 3; i++) { $(`#line-${i}`).value = it.lines[i] || ''; $(`#sock-${i}`).value = it.sockets[i] || ''; }
+  $('#note').value = it.note || '';
+}
+function resetForm(keepSlot = true) {
+  form.editingId = null;
+  const slot = form.slot;
+  fillForm({ slot: keepSlot ? slot : 'Hat', lines: ['', '', ''], sockets: ['', '', ''], note: '' });
+  $('#quick').value = '';
+  $('#form-title').textContent = 'Add a piece';
+  $('#form-submit').textContent = 'Add piece';
+  $('#form-cancel').hidden = true;
+  renderInventory();
+}
+function applyQuick(text) {
+  const toks = text.toLowerCase().split(/[\s,;|/:]+/).filter(Boolean);
+  let slot = null; const lines = []; const socks = [];
+  for (let i = 0; i < toks.length; i++) {
+    if (!slot) { const s = Q.parseSlot(toks[i]); if (s) { slot = s; continue; } }
+    let matched = false;
+    for (let w = 3; w >= 1 && !matched; w--) {
+      if (i + w > toks.length) continue;
+      const k = Q.matchSkill(toks.slice(i, i + w).join(''));
+      if (k !== null && k !== '' && lines.length < 3) { lines.push(k); i += w - 1; matched = true; }
+    }
+    if (matched) continue;
+    const sk = Q.matchSocket(toks[i]);
+    if (sk && socks.length < 3) socks.push(sk);
+  }
+  if (slot) setFormSlot(slot);
+  for (let i = 0; i < 3; i++) {
+    $(`#line-${i}`).value = lines[i] || '';
+    $(`#sock-${i}`).value = socks[i] || '';
+  }
+}
+function submitForm() {
+  const data = readForm();
+  if (!data.lines.some(Boolean) && !data.sockets.some(Boolean)) {
+    $('#form-msg').textContent = 'Pick at least one skill line or socket first.';
+    return;
+  }
+  $('#form-msg').textContent = '';
+  if (state.sample) state.sample = false;
+  if (form.editingId != null) {
+    const it = state.items.find((x) => x.id === form.editingId);
+    if (it) Object.assign(it, data);
+    toast(`Saved ${data.slot} #${form.editingId}`);
+    changed({ resolve: false });
+    resetForm();
+  } else {
+    const it = Object.assign({ id: state.nextId++ }, data);
+    state.items.push(it);
+    toast(`Added ${data.slot} #${it.id}`);
+    changed({ resolve: false });
+    resetForm();
+  }
+  $('#quick').focus();
+}
+
+/* ---------------- Inventory: list ---------------- */
+let slotFilter = 'All';
+function renderInventory() {
+  $('#sample-banner').hidden = !state.sample;
+  const counts = Object.fromEntries(Q.SLOTS.map((s) => [s, 0]));
+  state.items.forEach((it) => { counts[it.slot]++; });
+  $('#slot-filter').innerHTML = ['All', ...Q.SLOTS].map((s) => `<button type="button" data-filter="${s}" aria-pressed="${s === slotFilter}">${s}${s === 'All' ? '' : ` <span class="num muted">${counts[s]}</span>`}</button>`).join('');
+  const slots = slotFilter === 'All' ? Q.SLOTS : [slotFilter];
+  if (!state.items.length) {
+    $('#inv-list').innerHTML = `<div class="empty-state"><h3>No pieces yet</h3><p>Add your first drop with the form, or use quick entry: <span class="mono">hat dl wh reg p r g</span>.</p><button class="btn" data-act="load-sample">Load sample inventory</button></div>`;
+    return;
+  }
+  $('#inv-list').innerHTML = slots.map((slot) => {
+    const list = state.items.filter((it) => it.slot === slot);
+    const rows = list.map((it) => `
+      <li class="item${it.id === form.editingId ? ' editing' : ''}">
+        <span class="id">#${it.id}</span>
+        <span class="chips">${it.lines.map((k) => chip(k)).join('')}</span>
+        ${jewels(it.sockets)}
+        <span class="acts">
+          <button type="button" class="btn ghost" data-act="edit" data-id="${it.id}" aria-label="Edit #${it.id}">Edit</button>
+          <button type="button" class="btn ghost" data-act="dup" data-id="${it.id}" aria-label="Duplicate #${it.id}">Copy</button>
+          <button type="button" class="btn ghost" data-act="del" data-id="${it.id}" aria-label="Delete #${it.id}">Delete</button>
+        </span>
+        ${it.note ? `<span class="note">${esc(it.note)}</span>` : ''}
+      </li>`).join('');
+    return `<div class="slot-block"><div class="slot-title"><h3>${slot}</h3><span class="muted small num">${list.length} piece${list.length === 1 ? '' : 's'}</span></div>
+      ${list.length ? `<ul class="items">${rows}</ul>` : `<div class="empty-slot">No ${slot.toLowerCase()} yet. The solver treats this slot as empty.</div>`}</div>`;
+  }).join('');
+}
+$('#slot-filter').addEventListener('click', (e) => { const b = e.target.closest('[data-filter]'); if (b) { slotFilter = b.dataset.filter; renderInventory(); } });
+
+/* ---------------- Solve ---------------- */
+function renderPresetList() {
+  const defs = [...Q.PRESETS, presetDef('custom')];
+  $('#preset-list').innerHTML = defs.map((d) => {
+    const T = Q.resolveTarget(d, state.settings);
+    const p = T.valid ? `${T.prismatic} Prismatic · ${T.stat} stat` : 'Not 18 lines yet';
+    return `<button type="button" class="preset" data-preset="${d.id}" aria-pressed="${d.id === state.settings.presetId}"><b>${esc(presetTitle(d))}</b><span>${esc(d.tagline)}</span><span class="p">${p}</span></button>`;
+  }).join('');
+}
+$('#preset-list').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-preset]');
+  if (!b) return;
+  state.settings.presetId = b.dataset.preset;
+  save();
+  renderPresetList();
+  renderTarget();
+  solveNow();
+});
+function renderCustomEditor() {
+  const c = state.settings.custom;
+  const skills = Q.SCORED;
+  $('#custom-editor').innerHTML = `
+    <div class="row" style="justify-content:space-between"><h3>Custom target</h3>
+      <div class="row"><span class="small muted">Start from</span>${Q.PRESETS.map((p) => `<button type="button" class="btn ghost" data-act="custom-from" data-id="${p.id}">${esc(p.name)}</button>`).join('')}</div></div>
+    <div class="custom-grid">
+      ${skills.map((s) => `<label>${esc(s.name)} <input type="number" min="0" max="${s.cap}" step="1" id="cus-${s.key}" data-cus="${s.key}" value="${c.targets[s.key] || 0}"></label>`).join('')}
+      <label title="Distinct class lines that are not already targeted above">Any class lines <input type="number" min="0" max="5" step="1" id="cus-any" data-cus="@any" value="${c.anyClass || 0}"></label>
+    </div>
+    <div id="custom-sum" class="small"></div>`;
+  updateCustomSum();
+}
+function updateCustomSum() {
+  const T = Q.resolveTarget(presetDef('custom'), state.settings);
+  const el = $('#custom-sum');
+  if (!el) return;
+  el.innerHTML = T.valid ? `<span style="color:var(--ok)">18 / 18 lines · ${T.prismatic} Prismatic sockets needed</span>` : `<span class="errors">${T.errors.map(esc).join(' ')}</span>`;
+}
+let customTimer = 0;
+$('#custom-editor').addEventListener('input', (e) => {
+  const k = e.target.dataset.cus;
+  if (!k) return;
+  const v = Math.max(0, Math.floor(Number(e.target.value) || 0));
+  if (k === '@any') state.settings.custom.anyClass = v;
+  else if (v) state.settings.custom.targets[k] = v; else delete state.settings.custom.targets[k];
+  updateCustomSum();
+  renderPresetListKeepFocus();
+  clearTimeout(customTimer);
+  customTimer = setTimeout(() => { changed({ resolve: false }); renderTarget(); solveNow(); }, 350);
+});
+function renderPresetListKeepFocus() {
+  // The custom inputs live outside the preset list, so re-rendering the cards is safe.
+  renderPresetList();
+}
+function renderTarget() {
+  const def = presetDef(state.settings.presetId);
+  const editor = $('#custom-editor');
+  const isCustom = def.id === 'custom';
+  if (isCustom && editor.hidden) { editor.hidden = false; renderCustomEditor(); }
+  if (!isCustom) editor.hidden = true;
+  const T = Q.resolveTarget(def, state.settings);
+  if (!T.valid) { $('#target-strip').innerHTML = `<span class="errors">${T.errors.map(esc).join(' ')}</span>`; return; }
+  const parts = Object.entries(T.targets).map(([k, n]) => countChip(k, n));
+  if (T.anyClass) parts.push(`<span class="chip g-class" title="Distinct class lines">Any class <span class="n">×${T.anyClass}</span></span>`);
+  $('#target-strip').innerHTML = `<span class="eyebrow">Target lines</span><span class="chips">${parts.join('')}</span>
+    <span class="sock-need"><span class="jewels">${'<i class="jw jw-prismatic"></i>'.repeat(T.prismatic)}</span> ${T.prismatic} Prismatic + ${T.stat} stat sockets</span>`;
+}
+
+let solveToken = 0;
+let solveCache = { key: '', result: null };
+let showCount = 6;
+function solveNow(force) {
+  const def = presetDef(state.settings.presetId);
+  const key = `${version}|${def.id}|${state.settings.mage}|${state.settings.ownClass}`;
+  if (!force && solveCache.key === key && solveCache.result) { renderSolve(solveCache.result); return; }
+  const T = Q.resolveTarget(def, state.settings);
+  if (!T.valid) { $('#solve-out').innerHTML = `<div class="panel empty-state"><h3>Finish the custom target first</h3><p>${T.errors.map(esc).join(' ')}</p></div>`; return; }
+  const token = ++solveToken;
+  $('#solve-out').innerHTML = `<div class="panel empty-state"><p><span class="spinner"></span> Searching ${fmt(state.items.length)} pieces for ${esc(presetTitle(def))}…</p></div>`;
+  run('solve', itemsPlain(), def, state.settings, { limit: 60 }).then((r) => {
+    if (token !== solveToken) return;
+    solveCache = { key, result: r };
+    showCount = 6;
+    renderSolve(r);
+  }).catch((err) => {
+    if (token !== solveToken) return;
+    $('#solve-out').innerHTML = `<div class="panel errors">The solver stopped with an error: ${esc(err.message)}</div>`;
+  });
+}
+function comboCard(c, total) {
+  const a = c.analysis;
+  const fixSlots = new Set(a.fixes.filter((f) => f.reach === total).map((f) => f.slotIndex));
+  const label = c.score === total ? 'Exact 18/18 set' : `${total - c.score} line${total - c.score === 1 ? '' : 's'} short`;
+  const cells = c.slots.map((s, i) => {
+    const alt = s.itemIds.length > 1 ? `<span class="alt" title="Interchangeable pieces: ${s.itemIds.map((x) => '#' + x).join(', ')}">or ${s.itemIds.slice(1, 4).map((x) => '#' + x).join(', ')}${s.itemIds.length > 4 ? '…' : ''}</span>` : '';
+    const head = s.empty ? `<b>${s.slot}</b><span class="alt">none owned</span>` : `<b>${s.slot}</b><span class="mono small">#${s.itemIds[0]}</span>${alt}`;
+    return `<div class="cell${fixSlots.has(i) ? ' fixable' : ''}"><div class="cell-head">${head}</div><div class="cell-lines">${s.lines.map((k, j) => chip(k, a.status[i][j])).join('')}</div></div>`;
+  }).join('');
+  let foot = '';
+  if (c.score < total) {
+    const m = a.missing;
+    const missing = needChips(m.keys, m.anyClass, m.classOptions, 0);
+    const best = a.fixes.filter((f) => f.reach === a.fixes[0].reach).slice(0, 3);
+    const fixes = best.map((f) => `<div class="row"><span class="label">${f.reach === total ? 'Completes' : `Reaches ${f.reach}/18`}</span> Replace <b>${Q.SLOTS[f.slotIndex]}</b> with ${needChips(f.need, f.anyClass, f.classOptions, f.free)}</div>`).join('');
+    foot = `<div class="combo-foot"><div class="row"><span class="label">Missing</span>${missing}</div>${fixes}</div>`;
+  }
+  return `<article class="combo"><div class="combo-head"><span class="score ${scoreClass(c.score, total)}">${c.score}/${total}</span><b>${label}</b>${c.variants > 1 ? `<span class="muted small">${fmt(c.variants)} item variants</span>` : ''}</div><div class="combo-grid">${cells}</div>${foot}</article>`;
+}
+function wishlistPanel(r) {
+  const w = r.wishlist;
+  const entries = w ? w.entries.slice(0, 14) : [];
+  const body = entries.length ? `<ol>${entries.map((e) => {
+    const ex = Object.entries(e.example).map(([slot, ids]) => `${slot} #${ids[0]}`).join(' · ');
+    return `<li><div class="w-head"><b>${e.slot}</b><span class="muted small num">completes ${fmt(e.variants)} set${e.variants === 1 ? '' : 's'}</span></div>
+      <div class="chips">${needChips(e.need, e.anyClass, e.classOptions, e.free)}</div>
+      <details><summary>Example set it completes</summary><p>${esc(ex)}</p></details></li>`;
+  }).join('')}</ol>` : `<p class="muted small">No single piece completes an 18/18 yet. Every combo is still 4 or more lines short, so keep farming line fodder for the slots marked in the partial matches.</p>`;
+  return `<aside class="panel wish"><div class="panel-head" style="margin-bottom:6px"><div><h2>One piece away</h2><p class="muted small">Pieces that would finish an 18/18 with what you already own. Farm these first.</p></div></div>${body}</aside>`;
+}
+function renderSolve(r) {
+  const out = $('#solve-out');
+  if (r.error) { out.innerHTML = `<div class="panel errors">${esc(r.error)}</div>`; return; }
+  const total = r.target.total;
+  const exacts = r.combos.filter((c) => c.score === total);
+  const shown = r.combos.slice(0, showCount);
+  const sock = r.sockets;
+  const stats = `<div class="stats">
+    <div class="stat${r.best === total ? ' good' : ''}"><span class="eyebrow">Best match</span><span class="v">${r.best}<small>/${total}</small></span></div>
+    <div class="stat${r.exactVariants ? ' good' : ''}"><span class="eyebrow">Exact 18/18 sets</span><span class="v">${fmt(r.exactVariants)}${r.truncated ? '<small>+</small>' : ''}</span></div>
+    <div class="stat"><span class="eyebrow">One piece away</span><span class="v">${r.wishlist ? fmt(r.wishlist.entries.length) : '–'}<small> pieces</small></span></div>
+    <div class="stat"><span class="eyebrow">Socket bases</span><span class="v">${sock.anyData ? sock.score : '–'}<small>/18</small></span><span class="small muted">${sock.anyData ? `${sock.prismatic}/${sock.prismaticNeeded} Prismatic · ${sock.stat}/${sock.statNeeded} stat` : 'No sockets entered'}</span></div>
+  </div>`;
+  if (!r.itemCount) {
+    out.innerHTML = `<div class="panel empty-state"><h3>Your inventory is empty</h3><p>Add pieces on the Inventory tab and the solver will run here.</p><button class="btn" data-act="goto" data-tab="inventory">Go to inventory</button></div>`;
+    return;
+  }
+  const head = exacts.length ? `<div class="row" style="justify-content:space-between"><h2>Exact 18/18 sets</h2><span class="muted small">${exacts.length < r.combos.length ? 'Closest partial matches follow below.' : ''}</span></div>` : `<h2>Closest partial matches</h2>`;
+  const legend = `<div class="legend"><span>${chip('DL')} counts</span><span>${chip('DL', 'over')} over cap</span><span>${chip('DMG', 'off')} not in build</span><span>${chip('')} no piece</span><span><span class="chip fix-swatch">highlighted</span> slot one piece can complete</span></div>`;
+  const more = r.combos.length > showCount ? `<button class="btn" data-act="more">Show more (${r.combos.length - showCount} left)</button>` : '';
+  out.innerHTML = `<div class="view">${stats}<div class="results"><div class="combos">${head}${legend}${shown.map((c) => comboCard(c, total)).join('')}${more}
+    <p class="muted small">Searched ${fmt(r.nodes)} branches in ${fmt(r.ms)} ms${r.truncated ? '; the search hit its limit, so counts are a lower bound' : ''}.</p></div>${wishlistPanel(r)}</div></div>`;
+}
+
+/* ---------------- Compare ---------------- */
+let compareToken = 0;
+let compareCache = { key: '', result: null };
+function compareNow(force) {
+  const defs = allDefs();
+  const key = `${version}|${state.settings.mage}|${state.settings.ownClass}|${defs.map((d) => d.id).join()}`;
+  if (!force && compareCache.key === key) { renderCompare(compareCache.result, defs); return; }
+  const token = ++compareToken;
+  $('#compare-out').innerHTML = `<div class="empty-state"><p><span class="spinner"></span> Checking ${defs.length} builds…</p></div>`;
+  run('checkAll', itemsPlain(), defs, state.settings, { limit: 1 }).then((res) => {
+    if (token !== compareToken) return;
+    compareCache = { key, result: res };
+    renderCompare(res, defs);
+  }).catch((err) => { if (token === compareToken) $('#compare-out').innerHTML = `<p class="errors">${esc(err.message)}</p>`; });
+}
+function renderCompare(res, defs) {
+  if (!state.items.length) { $('#compare-out').innerHTML = `<div class="empty-state"><p>Add pieces first, then check which build is closest.</p></div>`; return; }
+  const rows = res.map((r, i) => ({ r, def: defs[i] })).filter((x) => !x.r.error);
+  rows.sort((a, b) => (b.r.best - a.r.best) || (b.r.exactVariants - a.r.exactVariants) || ((b.r.wishlist ? b.r.wishlist.entries.length : 0) - (a.r.wishlist ? a.r.wishlist.entries.length : 0)) || (a.r.target.prismatic - b.r.target.prismatic));
+  const html = rows.map(({ r, def }, i) => {
+    const total = r.target.total;
+    const c = r.combos[0];
+    const miss = c && c.score < total ? needChips(c.analysis.missing.keys, c.analysis.missing.anyClass, c.analysis.missing.classOptions, 0) : '<span style="color:var(--ok)">Nothing, it is complete</span>';
+    const w = r.wishlist ? r.wishlist.entries.length : 0;
+    const sock = r.sockets;
+    return `<tr class="${i === 0 ? 'leader' : ''}">
+      <td><b>${esc(presetTitle(def))}</b>${i === 0 ? '<span class="tag">Closest</span>' : ''}<div class="muted small">${esc(def.tagline)}</div></td>
+      <td><span class="num"><b>${r.best}</b>/18</span><div class="bar${r.best === total ? ' full' : ''}"><i style="width:${(r.best / total) * 100}%"></i></div></td>
+      <td class="num">${fmt(r.exactVariants)}</td>
+      <td class="num">${w}</td>
+      <td><span class="num">${r.target.prismatic}</span> <span class="jewels">${'<i class="jw jw-prismatic"></i>'.repeat(r.target.prismatic)}</span></td>
+      <td class="num">${sock.anyData ? `${sock.score}/18` : '–'}</td>
+      <td><div class="chips">${miss}</div></td>
+      <td><button class="btn" data-act="open-preset" data-id="${def.id}">Open</button></td>
+    </tr>`;
+  }).join('');
+  $('#compare-out').innerHTML = `<div class="table-wrap"><table>
+    <thead><tr><th>Build</th><th>Best match</th><th>Exact sets</th><th>Pieces 1 away</th><th>Prismatics needed</th><th>Socket bases</th><th>Missing in closest set</th><th></th></tr></thead>
+    <tbody>${html}</tbody></table></div>`;
+}
+
+/* ---------------- Sockets ---------------- */
+function renderSockets() {
+  const colors = ['red', 'green', 'gray', 'blue', 'purple'];
+  $('#color-picks').innerHTML = colors.map((c) => `<label><input type="checkbox" data-color="${c}" ${state.settings.statColors.includes(c) ? 'checked' : ''}> <i class="jw jw-${c}"></i> ${SOCK_NAME[c]}</label>`).join('');
+  const items = itemsPlain();
+  const withSockets = items.filter((it) => it.sockets.some(Boolean)).length;
+  if (!withSockets) {
+    $('#sockets-out').innerHTML = `<div class="panel empty-state"><h3>No sockets entered yet</h3><p>Fill in the jewel sockets when you add a piece, and the best socket base per slot shows up here.</p></div>`;
+    return;
+  }
+  const blocks = allDefs().map((def) => {
+    const T = Q.resolveTarget(def, state.settings);
+    const s = Q.solveSockets(items, T, state.settings.statColors);
+    const cards = s.slots.map((x) => `<div class="sock-card"><div class="row" style="justify-content:space-between"><b>${x.slot}</b>${x.empty ? '<span class="muted small">none</span>' : `<span class="mono small">#${x.items[0]}${x.items.length > 1 ? ` +${x.items.length - 1}` : ''}</span>`}</div>
+      ${x.empty ? '<span class="small muted">No piece with sockets entered</span>' : `${jewels(state.items.find((it) => it.id === x.items[0]).sockets)}<span class="small muted">${x.p} Prismatic · ${x.u} stat</span>`}</div>`).join('');
+    const ok = s.score === 18;
+    return `<div class="panel"><div class="panel-head"><div><h2>${esc(presetTitle(def))}</h2><p class="small muted">Needs ${s.prismaticNeeded} Prismatic + ${s.statNeeded} stat sockets</p></div>
+      <div class="row"><span class="score ${scoreClass(s.score, 18)}">${s.score}/18</span><span class="small muted">${s.prismatic}/${s.prismaticNeeded} Prismatic · ${s.stat}/${s.statNeeded} stat${s.prismatic > s.prismaticNeeded ? ` · ${s.prismatic - s.prismaticNeeded} Prismatic wasted` : ''}</span></div></div>
+      <div class="sock-grid">${cards}</div>${ok ? '' : '<p class="small muted" style="margin-top:10px">Keep an eye out for bases with more Prismatic or on-color sockets in the slots above.</p>'}</div>`;
+  }).join('');
+  $('#sockets-out').innerHTML = `<div class="view">${blocks}</div>`;
+}
+$('#color-picks').addEventListener('change', (e) => {
+  const c = e.target.dataset.color;
+  if (!c) return;
+  const set = new Set(state.settings.statColors);
+  if (e.target.checked) set.add(c); else set.delete(c);
+  state.settings.statColors = [...set];
+  changed();
+});
+
+/* ---------------- Import / Export ---------------- */
+const inFrame = (() => { try { return window.self !== window.top; } catch (e) { return true; } })();
+if (inFrame) $('#download-btn').hidden = true;
+function exportFormat() { return $('input[name="exp-fmt"]:checked').value; }
+function exportText() {
+  if (exportFormat() === 'csv') return Q.toCSV(state.items);
+  return JSON.stringify({ app: 'quanah-hologram-solver', version: 1, exportedAt: new Date().toISOString(), settings: state.settings, items: state.items }, null, 1);
+}
+function renderExport() { $('#export-text').value = exportText(); $('#export-msg').textContent = ''; }
+$$('input[name="exp-fmt"]').forEach((r) => r.addEventListener('change', renderExport));
+$('#import-file').addEventListener('change', (e) => {
+  const f = e.target.files && e.target.files[0];
+  if (!f) return;
+  const rd = new FileReader();
+  rd.onload = () => { $('#import-text').value = String(rd.result || ''); $('#import-msg').textContent = `Loaded ${f.name}. Press Import to add it.`; $('#import-msg').className = 'msg'; };
+  rd.readAsText(f);
+});
+function doImport() {
+  const msg = $('#import-msg');
+  try {
+    const r = Q.parseImport($('#import-text').value);
+    const mode = $('input[name="imp-mode"]:checked').value;
+    if (mode === 'replace') { state.items = []; state.nextId = 1; }
+    for (const it of r.items) { it.id = state.nextId++; state.items.push(it); }
+    if (r.settings) state.settings = Object.assign(defaultSettings(), state.settings, r.settings);
+    state.sample = false;
+    renderSettings(); renderPresetList();
+    changed({ resolve: false });
+    renderExport();
+    msg.className = 'msg ok';
+    msg.textContent = `Imported ${r.items.length} piece${r.items.length === 1 ? '' : 's'}${r.skipped.length ? `; skipped row${r.skipped.length === 1 ? '' : 's'} ${r.skipped.join(', ')} (no recognisable slot)` : ''}.`;
+    $('#import-text').value = '';
+  } catch (err) {
+    msg.className = 'msg err';
+    msg.textContent = err.message;
+  }
+}
+function copyText(text, msgEl) {
+  const done = () => { msgEl.className = 'msg ok'; msgEl.textContent = 'Copied to clipboard.'; };
+  const fallback = () => { const ta = $('#export-text'); ta.focus(); ta.select(); msgEl.className = 'msg'; msgEl.textContent = 'Text selected. Press Ctrl+C (or Cmd+C) to copy.'; };
+  try { navigator.clipboard.writeText(text).then(done, fallback); } catch (e) { fallback(); }
+}
+function download() {
+  const csv = exportFormat() === 'csv';
+  const blob = new Blob([exportText()], { type: csv ? 'text/csv' : 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `quanah-inventory-${new Date().toISOString().slice(0, 10)}.${csv ? 'csv' : 'json'}`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+
+/* ---------------- Global actions ---------------- */
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-act]');
+  if (!b) return;
+  const act = b.dataset.act;
+  const id = Number(b.dataset.id);
+  if (act === 'edit') {
+    const it = state.items.find((x) => x.id === id);
+    if (!it) return;
+    form.editingId = id;
+    fillForm(it);
+    $('#form-title').textContent = `Edit ${it.slot} #${id}`;
+    $('#form-submit').textContent = 'Save changes';
+    $('#form-cancel').hidden = false;
+    renderInventory();
+    $('#line-0').focus();
+  } else if (act === 'dup') {
+    const it = state.items.find((x) => x.id === id);
+    if (!it) return;
+    const copy = { id: state.nextId++, slot: it.slot, lines: it.lines.slice(), sockets: it.sockets.slice(), note: it.note };
+    state.items.splice(state.items.indexOf(it) + 1, 0, copy);
+    toast(`Copied #${id} as #${copy.id}`);
+    changed();
+  } else if (act === 'del') {
+    const i = state.items.findIndex((x) => x.id === id);
+    if (i < 0) return;
+    const [gone] = state.items.splice(i, 1);
+    if (form.editingId === id) resetForm();
+    lastDeleted = { item: gone, index: i };
+    toastUndo(`Deleted ${gone.slot} #${gone.id}`);
+    changed();
+  } else if (act === 'undo') {
+    if (lastDeleted) { state.items.splice(lastDeleted.index, 0, lastDeleted.item); lastDeleted = null; $('#toast').hidden = true; changed(); }
+  } else if (act === 'clear-sample') {
+    state.items = []; state.nextId = 1; state.sample = false; changed();
+  } else if (act === 'load-sample') {
+    const s = makeSample(); state.items = s.items; state.nextId = s.nextId; state.sample = true;
+    changed(); toast('Sample inventory loaded');
+    if (activeTab === 'data') showTab('inventory');
+  } else if (act === 'ask-clear') {
+    $('#reset-row').innerHTML = `<span class="small">Delete all ${state.items.length} pieces from this browser?</span><button class="btn danger" data-act="confirm-clear">Yes, clear</button><button class="btn" data-act="cancel-clear">Keep them</button>`;
+  } else if (act === 'confirm-clear' || act === 'cancel-clear') {
+    if (act === 'confirm-clear') { state.items = []; state.nextId = 1; state.sample = false; changed(); toast('Inventory cleared'); }
+    $('#reset-row').innerHTML = `<button class="btn danger" data-act="ask-clear">Clear inventory</button><button class="btn" data-act="load-sample">Load sample inventory</button>`;
+  } else if (act === 'solve') {
+    solveNow(true);
+  } else if (act === 'more') {
+    showCount += 10; if (solveCache.result) renderSolve(solveCache.result);
+  } else if (act === 'compare') {
+    compareNow(true);
+  } else if (act === 'open-preset') {
+    state.settings.presetId = b.dataset.id; save(); renderPresetList(); showTab('solve');
+  } else if (act === 'goto') {
+    showTab(b.dataset.tab);
+  } else if (act === 'custom-from') {
+    const T = Q.resolveTarget(Q.PRESETS.find((p) => p.id === b.dataset.id), state.settings);
+    state.settings.custom = { targets: Object.assign({}, T.targets), anyClass: T.anyClass };
+    renderCustomEditor(); renderPresetList(); changed({ resolve: false }); renderTarget(); solveNow();
+  } else if (act === 'copy-export') {
+    copyText($('#export-text').value, $('#export-msg'));
+  } else if (act === 'download-export') {
+    download();
+  } else if (act === 'import') {
+    doImport();
+  }
+});
+let lastDeleted = null;
+function toastUndo(msg) {
+  const t = $('#toast');
+  t.innerHTML = `${esc(msg)} <button class="btn ghost" data-act="undo" style="color:inherit;text-decoration:underline">Undo</button>`;
+  t.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.hidden = true; }, 5000);
+}
+
+/* ---------------- Boot ---------------- */
+initForm();
+renderSettings();
+renderPresetList();
+$('#badge-items').textContent = state.items.length;
+showTab(location.hash.slice(1) || 'inventory', { push: false });
+})();
+</script>
+<!-- APP:END -->
+</body>
+</html>

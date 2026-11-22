@@ -237,6 +237,28 @@ Dimensional Leap Lv. +1
   assert.deepEqual(Q.parseOcrText(leap)[0].lines, ['DL', 'ARC', 'PIR']);
 });
 
+test('one piece never carries the same skill twice', () => {
+  assert.equal(Q.hasDuplicateLines(['WH', 'WH', 'ATT']), true);
+  assert.equal(Q.hasDuplicateLines(['OTHER', 'OTHER', 'ATT']), false);
+  // Best set misses White Hole twice: no single Gloves can fix that, so no "completes" and no wishlist entry with WH twice.
+  const inv = [
+    item('Hat', ['DL', 'WH', 'WAR']), item('Top', ['REG', 'ATT', 'MAG']), item('Bottom', ['DL', 'REG', 'CD']),
+    item('Gloves', ['OTHER', 'ATT', 'OTHER']), item('Shoes', ['DL', 'ATT', 'THF']), item('Cape', ['ARC', 'REG', 'PIR']),
+  ];
+  const r = Q.solve(inv, preset('traditional'), {});
+  assert.equal(r.best, 16);
+  const a = r.combos[0].analysis;
+  assert.deepEqual(a.missing.keys, ['WH', 'WH']);
+  const gloves = a.fixes.find((f) => Q.SLOTS[f.slotIndex] === 'Gloves');
+  assert.equal(gloves.reach, 17);
+  assert.deepEqual(gloves.need, ['WH', 'ATT']);
+  assert.ok(r.wishlist.entries.every((e) => !Q.hasDuplicateLines(e.need)));
+  for (const c of r.combos) for (const f of c.analysis.fixes) assert.equal(Q.hasDuplicateLines(f.need), false);
+  // Replacing the Hat (which holds one White Hole) can bring a second one: Hat with WH + WAR + something.
+  const hat = a.fixes.find((f) => Q.SLOTS[f.slotIndex] === 'Hat');
+  assert.ok(!hat || !Q.hasDuplicateLines(hat.need));
+});
+
 test('large inventory solves quickly', () => {
   let seed = 99;
   const rnd = () => ((seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648);

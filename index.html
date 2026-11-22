@@ -656,7 +656,11 @@ function makeSample() {
     const n = 4 + Math.floor(rnd() * 3);
     const plantAt = Math.floor(rnd() * n);
     for (let k = 0; k < n; k++) {
-      const lines = k === plantAt ? planted[slot].slice() : [0, 1, 2].map(() => pickW(lineW));
+      let lines = planted[slot].slice();
+      if (k !== plantAt) {
+        lines = [];
+        while (lines.length < 3) { const l = pickW(lineW); if (l === 'OTHER' || !lines.includes(l)) lines.push(l); }
+      }
       items.push({ id: id++, kind: 'lines', slot, lines, sockets: ['', '', ''], note: '' });
     }
   }
@@ -897,6 +901,10 @@ function submitForm() {
     $('#form-msg').textContent = 'Pick at least one skill line first.';
     return;
   }
+  if (Q.hasDuplicateLines(data.lines)) {
+    $('#form-msg').textContent = 'A piece can have each skill only once. Change the duplicate line.';
+    return;
+  }
   $('#form-msg').textContent = '';
   if (form.editingId != null) {
     state.sample = false;
@@ -934,7 +942,7 @@ function renderInventory() {
     const rows = list.map((it) => `
       <li class="item${it.id === form.editingId ? ' editing' : ''}">
         <span class="id">#${it.id}</span>
-        <span class="chips">${it.lines.map((k) => chip(k)).join('')}</span>
+        <span class="chips">${it.lines.map((k) => chip(k)).join('')}${Q.hasDuplicateLines(it.lines) ? '<span class="rate meh" title="The same skill can only appear once on a piece. Edit this piece.">same skill twice</span>' : ''}</span>
         <span></span>
         <span class="acts">
           <button type="button" class="btn ghost" data-act="edit" data-id="${it.id}" aria-label="Edit #${it.id}">Edit</button>
@@ -1369,7 +1377,7 @@ function samePiece(a, b) {
   if ((a.kind === 'base') !== (b.kind === 'base') || a.slot !== b.slot) return false;
   return a.kind === 'base' ? a.sockets.join() === b.sockets.join() : a.lines.join() === b.lines.join();
 }
-function pieceReady(p) { return !!p.slot && (p.kind === 'base' ? p.sockets.some(Boolean) : p.lines.some(Boolean)); }
+function pieceReady(p) { return !!p.slot && (p.kind === 'base' ? p.sockets.some(Boolean) : p.lines.some(Boolean) && !Q.hasDuplicateLines(p.lines)); }
 function addScanPieces(img, list) {
   for (const raw of list) {
     const it = Q.normalizeItem(Object.assign({}, raw, { kind: scan.kind }), 0);
@@ -1550,6 +1558,7 @@ function renderReview() {
     const im = imgById(p.imgId);
     const warn = [...p.warnings];
     if (p.include && !p.slot) warn.unshift('Pick a slot before adding');
+    if (p.kind !== 'base' && Q.hasDuplicateLines(p.lines)) warn.unshift('Same skill twice: a piece has each skill only once, fix the misread line');
     const isBase = p.kind === 'base';
     const fields = isBase
       ? [0, 1, 2].map((i) => `<select data-scan="sock" data-i="${i}" aria-label="Socket ${i + 1}">${socketOptions()}</select>`).join('')
@@ -1584,7 +1593,7 @@ $('#scan-review').addEventListener('change', (e) => {
   if (kind === 'include') p.include = e.target.checked;
   else if (kind === 'slot') p.slot = e.target.value;
   else if (kind === 'kind') p.kind = e.target.value;
-  else if (kind === 'line') p.lines[e.target.dataset.i] = e.target.value;
+  else if (kind === 'line') { p.lines[e.target.dataset.i] = e.target.value; renderReview(); return; }
   else if (kind === 'sock') p.sockets[e.target.dataset.i] = e.target.value;
   if (kind === 'include' || kind === 'slot' || kind === 'kind') renderReview();
 });

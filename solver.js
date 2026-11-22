@@ -153,6 +153,28 @@
     return { keys, anyClass, classOptions, total: keys.length + anyClass };
   }
 
+  /**
+   * What ONE new piece can add toward deficits d. A piece never has the same skill twice,
+   * so each missing skill counts once, plus distinct wildcard class lines.
+   */
+  function onePiece(d) {
+    const need = [...new Set(d.keys)].slice(0, 3);
+    const anyClass = Math.min(3 - need.length, d.anyClass, d.classOptions.length);
+    const gain = need.length + anyClass;
+    return { need, anyClass, gain, free: 3 - gain, completes: gain === d.total };
+  }
+
+  /** True when a piece lists the same skill on more than one line ("Other" excepted). */
+  function hasDuplicateLines(lines) {
+    const seen = new Set();
+    for (const k of lines || []) {
+      if (!k || k === 'OTHER') continue;
+      if (seen.has(k)) return true;
+      seen.add(k);
+    }
+    return false;
+  }
+
   function countLines(lineSets) {
     const C = new Int32Array(N);
     for (const lines of lineSets) for (const k of lines || []) { const i = IDX[k]; if (i !== undefined) C[i]++; }
@@ -298,13 +320,11 @@
         for (const k of lines || []) { const i = IDX[k]; if (i !== undefined) C2[i]--; }
         const base = scoreCounts(C2, T);
         const d = deficits(C2, T);
-        const reach = base + Math.min(3, d.total);
+        const one = onePiece(d);
+        const reach = base + one.gain;
         if (reach <= score) return;
-        const need = d.keys.slice(0, 3);
-        const anyClass = Math.min(3 - need.length, d.anyClass);
         fixes.push({
-          slotIndex: s, reach, need, anyClass, classOptions: d.classOptions,
-          free: 3 - need.length - anyClass,
+          slotIndex: s, reach, need: one.need, anyClass: one.anyClass, classOptions: d.classOptions, free: one.free,
         });
       });
       fixes.sort((a, b) => b.reach - a.reach || a.slotIndex - b.slotIndex);
@@ -344,16 +364,17 @@
         });
         if (owned) continue;
         const d = deficits(C, T);
-        if (d.total > 3) continue;
-        const need = d.keys.slice().sort();
-        const key = `${j}|${need.join(',')}|${d.anyClass}|${d.anyClass ? d.classOptions.join(',') : ''}`;
+        const one = onePiece(d);
+        if (!one.completes) continue; // e.g. still needs White Hole twice: no single piece can do that
+        const need = one.need.slice().sort();
+        const key = `${j}|${need.join(',')}|${one.anyClass}|${one.anyClass ? d.classOptions.join(',') : ''}`;
         let e = agg.get(key);
         if (!e) {
           const example = {};
           res.pick.forEach((gi, k) => { example[SLOTS[subIdx[k]]] = sub[k][gi].items.slice(); });
           e = {
-            slotIndex: j, slot: SLOTS[j], need, anyClass: d.anyClass,
-            classOptions: d.anyClass ? d.classOptions : [], free: 3 - need.length - d.anyClass,
+            slotIndex: j, slot: SLOTS[j], need, anyClass: one.anyClass,
+            classOptions: one.anyClass ? d.classOptions : [], free: one.free,
             combos: 0, variants: 0, example,
           };
           agg.set(key, e);
@@ -749,7 +770,7 @@
 
   return {
     TOTAL_LINES, SLOTS, SKILLS, SCORED, SKILL_BY_KEY, CLASS_KEYS, SOCKETS, DEFAULT_STAT_COLORS, PRESETS,
-    resolveTarget, scoreCounts, deficits, countLines, buildSlotGroups, search, analyzeCombo,
+    resolveTarget, scoreCounts, deficits, onePiece, hasDuplicateLines, countLines, buildSlotGroups, search, analyzeCombo,
     buildWishlist, solveSockets, rateBase, solve, checkAll,
     parseSkill, parseSocket, parseSlot, matchSkill, matchSocket, normalizeItem, parseImport, parseCSV, toCSV,
     parseOcrText, ocrSkillLine,

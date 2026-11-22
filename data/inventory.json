@@ -1,0 +1,673 @@
+{
+ "app": "quanah-hologram-solver",
+ "version": 2,
+ "savedAt": "2026-11-22T14:19:50.968Z",
+ "nextId": 41,
+ "settings": {
+  "mage": false,
+  "ownClass": "PIR",
+  "statColors": [
+   "red",
+   "green",
+   "gray"
+  ],
+  "presetId": "traditional",
+  "custom": {
+   "targets": {
+    "DL": 3,
+    "WH": 3,
+    "REG": 3,
+    "ATT": 3,
+    "CD": 1,
+    "WAR": 1,
+    "MAG": 1,
+    "ARC": 1,
+    "THF": 1,
+    "PIR": 1
+   },
+   "anyClass": 0
+  }
+ },
+ "items": [
+  {
+   "id": 1,
+   "kind": "lines",
+   "slot": "Top",
+   "lines": [
+    "ARC",
+    "WAR",
+    "MAG"
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 2,
+   "kind": "lines",
+   "slot": "Top",
+   "lines": [
+    "WAR",
+    "ARC",
+    "ATT"
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 3,
+   "kind": "lines",
+   "slot": "Top",
+   "lines": [
+    "WAR",
+    "CD",
+    "PIR"
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 4,
+   "kind": "lines",
+   "slot": "Top",
+   "lines": [
+    "DL",
+    "ARC",
+    "PIR"
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 5,
+   "kind": "lines",
+   "slot": "Top",
+   "lines": [
+    "MAG",
+    "WH",
+    "ARC"
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 6,
+   "kind": "lines",
+   "slot": "Hat",
+   "lines": [
+    "WAR",
+    "DL",
+    "REG"
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 7,
+   "kind": "lines",
+   "slot": "Hat",
+   "lines": [
+    "REG",
+    "ARC",
+    "DL"
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 8,
+   "kind": "lines",
+   "slot": "Hat",
+   "lines": [
+    "WH",
+    "OTHER",
+    ""
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 9,
+   "kind": "lines",
+   "slot": "Hat",
+   "lines": [
+    "WAR",
+    "CD",
+    "PIR"
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 10,
+   "kind": "lines",
+   "slot": "Hat",
+   "lines": [
+    "MAG",
+    "REG",
+    "DMG"
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 11,
+   "kind": "lines",
+   "slot": "Shoes",
+   "lines": [
+    "OTHER",
+    "DMG",
+    "ARC"
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 12,
+   "kind": "lines",
+   "slot": "Shoes",
+   "lines": [
+    "THF",
+    "DL",
+    "MAG"
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 13,
+   "kind": "lines",
+   "slot": "Shoes",
+   "lines": [
+    "OTHER",
+    "DL",
+    "OTHER"
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 14,
+   "kind": "lines",
+   "slot": "Shoes",
+   "lines": [
+    "DL",
+    "PIR",
+    "OTHER"
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 15,
+   "kind": "lines",
+   "slot": "Gloves",
+   "lines": [
+    "OTHER",
+    "ATT",
+    "OTHER"
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 16,
+   "kind": "lines",
+   "slot": "Gloves",
+   "lines": [
+    "ARC",
+    "",
+    ""
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 17,
+   "kind": "lines",
+   "slot": "Gloves",
+   "lines": [
+    "MAG",
+    "WAR",
+    "ARC"
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 18,
+   "kind": "lines",
+   "slot": "Gloves",
+   "lines": [
+    "REG",
+    "OTHER",
+    "MAG"
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 19,
+   "kind": "lines",
+   "slot": "Cape",
+   "lines": [
+    "WH",
+    "ARC",
+    "DL"
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 20,
+   "kind": "lines",
+   "slot": "Cape",
+   "lines": [
+    "THF",
+    "ATT",
+    "REG"
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 21,
+   "kind": "lines",
+   "slot": "Cape",
+   "lines": [
+    "OTHER",
+    "WH",
+    "DL"
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 22,
+   "kind": "lines",
+   "slot": "Cape",
+   "lines": [
+    "PIR",
+    "CD",
+    "MAG"
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 23,
+   "kind": "lines",
+   "slot": "Cape",
+   "lines": [
+    "PIR",
+    "ATT",
+    "THF"
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 24,
+   "kind": "lines",
+   "slot": "Cape",
+   "lines": [
+    "PIR",
+    "MAG",
+    "WAR"
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 25,
+   "kind": "lines",
+   "slot": "Cape",
+   "lines": [
+    "ARC",
+    "ATT",
+    "THF"
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 26,
+   "kind": "lines",
+   "slot": "Cape",
+   "lines": [
+    "CD",
+    "WH",
+    ""
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 27,
+   "kind": "lines",
+   "slot": "Cape",
+   "lines": [
+    "REG",
+    "CD",
+    "THF"
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 28,
+   "kind": "lines",
+   "slot": "Bottom",
+   "lines": [
+    "ARC",
+    "WAR",
+    "DL"
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 29,
+   "kind": "lines",
+   "slot": "Bottom",
+   "lines": [
+    "WAR",
+    "THF",
+    "DL"
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 30,
+   "kind": "lines",
+   "slot": "Bottom",
+   "lines": [
+    "REG",
+    "OTHER",
+    "WH"
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 31,
+   "kind": "lines",
+   "slot": "Bottom",
+   "lines": [
+    "THF",
+    "WAR",
+    "WH"
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 32,
+   "kind": "lines",
+   "slot": "Bottom",
+   "lines": [
+    "WH",
+    "REG",
+    "ARC"
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 33,
+   "kind": "lines",
+   "slot": "Top",
+   "lines": [
+    "REG",
+    "PIR",
+    "ATT"
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 34,
+   "kind": "lines",
+   "slot": "Hat",
+   "lines": [
+    "CD",
+    "REG",
+    "WH"
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 35,
+   "kind": "lines",
+   "slot": "Cape",
+   "lines": [
+    "DL",
+    "ATT",
+    "CD"
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 36,
+   "kind": "lines",
+   "slot": "Top",
+   "lines": [
+    "ATT",
+    "WH",
+    ""
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 37,
+   "kind": "lines",
+   "slot": "Gloves",
+   "lines": [
+    "ARC",
+    "THF",
+    "WAR"
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 38,
+   "kind": "lines",
+   "slot": "Bottom",
+   "lines": [
+    "DL",
+    "ATT",
+    ""
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 39,
+   "kind": "lines",
+   "slot": "Shoes",
+   "lines": [
+    "REG",
+    "ATT",
+    "MAG"
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 40,
+   "kind": "lines",
+   "slot": "Cape",
+   "lines": [
+    "WAR",
+    "REG",
+    "ATT"
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  }
+ ]
+}

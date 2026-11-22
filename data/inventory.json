@@ -1,8 +1,8 @@
 {
  "app": "quanah-hologram-solver",
  "version": 2,
- "savedAt": "2026-11-22T14:01:48.202Z",
- "nextId": 11,
+ "savedAt": "2026-11-22T14:02:44.119Z",
+ "nextId": 15,
  "settings": {
   "mage": false,
   "ownClass": "PIR",
@@ -181,6 +181,70 @@
     "MAG",
     "REG",
     "DMG"
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 11,
+   "kind": "lines",
+   "slot": "Shoes",
+   "lines": [
+    "OTHER",
+    "DMG",
+    "ARC"
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 12,
+   "kind": "lines",
+   "slot": "Shoes",
+   "lines": [
+    "THF",
+    "DL",
+    "MAG"
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 13,
+   "kind": "lines",
+   "slot": "Shoes",
+   "lines": [
+    "OTHER",
+    "DL",
+    "OTHER"
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 14,
+   "kind": "lines",
+   "slot": "Shoes",
+   "lines": [
+    "DL",
+    "PIR",
+    "OTHER"
    ],
    "sockets": [
     "",

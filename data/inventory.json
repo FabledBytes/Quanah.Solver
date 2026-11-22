@@ -1,7 +1,7 @@
 {
  "app": "quanah-hologram-solver",
  "version": 2,
- "savedAt": "2026-11-22T15:10:13.745Z",
+ "savedAt": "2026-11-22T15:20:59.714Z",
  "nextId": 51,
  "settings": {
   "mage": false,
@@ -11,7 +11,7 @@
    "green",
    "gray"
   ],
-  "presetId": "chinese",
+  "presetId": "traditional",
   "custom": {
    "targets": {
     "DL": 3,

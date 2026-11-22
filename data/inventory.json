@@ -1,8 +1,8 @@
 {
  "app": "quanah-hologram-solver",
  "version": 2,
- "savedAt": "2026-11-22T20:44:02.725Z",
- "nextId": 74,
+ "savedAt": "2026-11-22T20:51:40.521Z",
+ "nextId": 75,
  "settings": {
   "mage": false,
   "ownClass": "PIR",
@@ -1093,6 +1093,22 @@
     "ATT",
     "DL",
     "MAG"
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 74,
+   "kind": "lines",
+   "slot": "Shoes",
+   "lines": [
+    "DMG",
+    "PIR",
+    "WAR"
    ],
    "sockets": [
     "",

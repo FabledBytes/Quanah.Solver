@@ -27,8 +27,7 @@
     { key: 'DL', name: 'Dimensional Leap', short: 'DL', cap: 3, group: 'core' },
     { key: 'WH', name: 'White Hole', short: 'WH', cap: 3, group: 'core' },
     { key: 'REG', name: 'Registry', short: 'REG', cap: 3, group: 'core' },
-    { key: 'ATT', name: 'ATT Enhancement', short: 'ATT', cap: 3, group: 'core' },
-    { key: 'MATT', name: 'M.ATT Enhancement', short: 'MATT', cap: 3, group: 'core' },
+    { key: 'ATT', name: 'Attack Power & Magic ATT Enhancement', short: 'ATT', cap: 3, group: 'core' },
     { key: 'CD', name: 'Critical Damage', short: 'CD', cap: 3, group: 'secondary' },
     { key: 'DMG', name: 'Damage', short: 'DMG', cap: 3, group: 'secondary' },
     { key: 'WAR', name: 'Warrior', short: 'WAR', cap: 1, group: 'class' },
@@ -59,7 +58,7 @@
   ];
   const DEFAULT_STAT_COLORS = ['red', 'green', 'gray'];
 
-  // '@ATT' resolves to ATT or M.ATT Enhancement, '@OWN' to the player's own class line.
+  // '@ATT' is the shared Attack Power & Magic ATT Enhancement skill, '@OWN' the player's own class line.
   const PRESETS = [
     {
       id: 'traditional', name: 'Traditional 18/18', tagline: 'Easiest RNG',
@@ -87,10 +86,10 @@
     settings = settings || {};
     const counts = new Array(N).fill(0);
     const errors = [];
-    const attKey = settings.mage ? 'MATT' : 'ATT';
     const own = CLASS_KEYS.includes(settings.ownClass) ? settings.ownClass : 'PIR';
     for (const [rawKey, rawN] of Object.entries((def && def.targets) || {})) {
-      const key = rawKey === '@ATT' ? attKey : rawKey === '@OWN' ? own : rawKey;
+      // ATT and M.ATT Enhancement are one skill in the game; older custom targets may say MATT.
+      const key = rawKey === '@ATT' || rawKey === 'MATT' ? 'ATT' : rawKey === '@OWN' ? own : rawKey;
       const n = Math.max(0, Math.floor(Number(rawN) || 0));
       if (!(key in IDX)) { if (n) errors.push(`Unknown skill "${rawKey}".`); continue; }
       counts[IDX[key]] += n;
@@ -495,7 +494,8 @@
     wh: 'WH', whitehole: 'WH',
     reg: 'REG', registry: 'REG',
     att: 'ATT', attenhancement: 'ATT', attack: 'ATT', attmattenhancement: 'ATT', attmatt: 'ATT',
-    matt: 'MATT', mattenhancement: 'MATT', magicattack: 'MATT', magicattenhancement: 'MATT',
+    matt: 'ATT', mattenhancement: 'ATT', magicattack: 'ATT', magicattenhancement: 'ATT',
+    attackpower: 'ATT', attackpowermagicattenhancement: 'ATT', attackpowermagicatt: 'ATT',
     cd: 'CD', crit: 'CD', critdmg: 'CD', critdamage: 'CD', criticaldamage: 'CD', critical: 'CD',
     dmg: 'DMG', damage: 'DMG',
     war: 'WAR', warrior: 'WAR',
@@ -624,16 +624,16 @@
   /* OCR text → pieces (used by the on-device screenshot reader)         */
   /* ------------------------------------------------------------------ */
 
-  // Long names are fuzzy-matched inside the joined letters of a line; short ones per word.
-  const OCR_LONG = [
-    ['magicattackenhancement', 'MATT'], ['attackenhancement', 'ATT'], ['dimensionalleap', 'DL'],
-    ['criticaldamage', 'CD'], ['attenhancement', 'ATT'], ['whitehole', 'WH'],
+  // Real tooltip lines look like "[Hologram] Bowman Attack Skill Level Lv. +1",
+  // "[Hologram] Attack Power & Magic ATT Enhancement Skill Lv. +1" (often wrapped) or "White Hole Lv. +1".
+  const OCR_NAMES = [
+    ['dimensionalleap', 'DL'], ['whitehole', 'WH'], ['registry', 'REG'],
+    ['criticaldamage', 'CD'], ['critdamage', 'CD'], ['damage', 'DMG'],
+    ['warrior', 'WAR'], ['magician', 'MAG'], ['mage', 'MAG'], ['bowman', 'ARC'], ['archer', 'ARC'],
+    ['thief', 'THF'], ['pirate', 'PIR'],
   ];
-  const OCR_SHORT = [
-    ['registry', 'REG'], ['magician', 'MAG'], ['warrior', 'WAR'], ['damage', 'DMG'], ['archer', 'ARC'],
-    ['bowman', 'ARC'], ['pirate', 'PIR'], ['thief', 'THF'], ['mage', 'MAG'],
-  ];
-  const OCR_STOP = new Set(['lv', 'lvl', 'level', 'skill', 'hologram', 'max']);
+  const OCR_FILLER = new Set(['attack', 'skill', 'skills', 'level', 'enhancement', 'lv', 'ly', 'lvl', 'increase']);
+  const OCR_NOT_SKILL = /required|scroll|remaining|restore|potential|duration|set effect|combat power|jewel/;
   const OCR_SLOT_RE = /\b(hat|helmet|helm|top|overall|bottoms?|pants|gloves?|shoes?|boots|cape|cloak)\b/;
 
   function editDistance(a, b) {
@@ -662,43 +662,43 @@
     return { dist: best, end };
   }
 
-  /** Skill keys found on one OCR line, in reading order ([] when the line isn't a skill line). */
-  function ocrLineSkills(line) {
-    const words = String(line).toLowerCase().replace(/[^a-z\s.]/g, ' ').split(/[\s.]+/).filter((w) => w && !OCR_STOP.has(w) && (w.length > 1 || w === 'm'));
-    if (!words.length) return [];
-    let joined = words.join('');
-    if (joined.length > 48) return []; // descriptions, not skill lines
-    const total = joined.length;
-    const found = [];
-    let covered = 0;
-    for (const [pat, key] of OCR_LONG) {
-      const tol = Math.min(3, Math.floor(pat.length / 6));
-      for (let guard = 0; guard < 3; guard++) {
-        const r = approxFind(pat, joined);
-        if (r.dist > tol) break;
-        let start = Math.max(0, r.end - pat.length);
-        let k = key;
-        if (key === 'ATT' && start > 0 && joined[start - 1] === 'm') { k = 'MATT'; start--; } // M.ATT vs ATT
-        found.push({ key: k, pos: start });
-        covered += r.end - start;
-        joined = joined.slice(0, start) + '#'.repeat(r.end - start) + joined.slice(r.end);
-      }
+  /**
+   * Reads one OCR line. Returns null when it is not a Hologram skill line,
+   * {skip: true} for a wrapped continuation ("Skill Lv. +1"), else {key, text}.
+   */
+  function ocrSkillLine(line) {
+    const raw = String(line || '');
+    const lower = raw.toLowerCase();
+    if (OCR_NOT_SKILL.test(lower)) return null;
+    const words = lower.replace(/[^a-z0-9+\s]/g, ' ').split(/\s+/).filter(Boolean);
+    // "[Hologram]" prefix (OCR may read it as "[HOlOgram)" or glue it to noise).
+    let holoAt = -1;
+    for (let i = 0; i < Math.min(words.length, 4); i++) {
+      const w = words[i].replace(/[^a-z]/g, '');
+      if (w.length >= 6 && approxFind('hologram', w).dist <= 2 && Math.abs(w.length - 8) <= 3) { holoAt = i; break; }
     }
-    // Map each word to its range in the joined string to skip words already used by a long match.
-    let p = 0;
-    for (const w of words) {
-      const range = joined.slice(p, p + w.length);
-      const pos = p;
-      p += w.length;
-      if (range.includes('#')) continue;
-      for (const [pat, key] of OCR_SHORT) {
-        const tol = pat.length >= 6 ? 1 : 0;
-        if (Math.abs(w.length - pat.length) > tol) continue;
-        if (editDistance(w, pat) <= tol) { found.push({ key, pos }); covered += w.length; break; }
-      }
+    // "Lv. +1" suffix (OCR often reads Lv as Ly).
+    let lvAt = -1;
+    for (let i = 0; i < words.length; i++) if (/^l[vy1i]l?$/.test(words[i])) { lvAt = i; break; }
+    const hasPlus = /\+\s*\d/.test(raw);
+    if (holoAt < 0 && !(lvAt >= 0 && hasPlus)) return null;
+    let nameWords = words.slice(holoAt + 1, lvAt >= 0 ? lvAt : words.length).filter((w) => /^[a-z]+$/.test(w));
+    const joinedAll = nameWords.join('');
+    if (!joinedAll) return { skip: true };
+    // "Attack Power & Magic ATT Enhancement": the shared ATT / M.ATT skill.
+    if (approxFind('attackpower', joinedAll).dist <= 2 || approxFind('magicatt', joinedAll).dist <= 1) return { key: 'ATT', text: raw.trim() };
+    nameWords = nameWords.filter((w) => !OCR_FILLER.has(w));
+    const name = nameWords.join('');
+    if (!name) return { skip: true };
+    let best = null;
+    for (const [pat, key] of OCR_NAMES) {
+      const d = editDistance(name, pat);
+      const tol = Math.max(1, Math.floor(pat.length * 0.25));
+      if (d <= tol && (!best || d < best.d)) best = { key, d };
     }
-    if (!found.length || covered / total < 0.6) return [];
-    return found.sort((a, b) => a.pos - b.pos).map((f) => f.key);
+    if (best) return { key: best.key, text: raw.trim() };
+    if (holoAt >= 0 || (hasPlus && nameWords.length <= 4)) return { key: 'OTHER', text: raw.trim() };
+    return null;
   }
 
   /**
@@ -710,21 +710,22 @@
     let cur = null;
     const start = (slot) => { cur = { slot: slot || '', lines: [], sockets: ['', '', ''], warnings: [] }; pieces.push(cur); };
     for (const raw of String(text || '').split(/\r?\n/)) {
-      const lower = raw.toLowerCase();
-      const sm = lower.match(OCR_SLOT_RE);
-      const skills = ocrLineSkills(raw);
-      if (sm && !skills.length) {
+      const skill = ocrSkillLine(raw);
+      if (skill && skill.skip) continue;
+      if (!skill) {
+        const sm = raw.toLowerCase().match(OCR_SLOT_RE);
+        if (!sm) continue;
         const slot = parseSlot(sm[1]);
         if (!cur) start(slot);
         else if (!cur.slot) cur.slot = slot;
         else if (cur.lines.length && (cur.slot !== slot || cur.lines.length >= 3)) start(slot);
         else if (cur.slot !== slot && !cur.lines.length) cur.slot = slot;
+        continue;
       }
-      for (const k of skills) {
-        if (!cur) start('');
-        if (cur.lines.length >= 3) { const s = cur.slot; start(s); cur.warnings.push('Continued from a piece with more than 3 lines'); }
-        cur.lines.push(k);
-      }
+      if (!cur) start('');
+      if (cur.lines.length >= 3) { const s = cur.slot; start(s); cur.warnings.push('Continued from a piece with more than 3 lines'); }
+      cur.lines.push(skill.key);
+      if (skill.key === 'OTHER') cur.warnings.push(`Unrecognised skill line: "${skill.text.slice(0, 60)}"`);
     }
     const out = pieces.filter((pc) => pc.lines.length);
     for (const pc of out) {
@@ -751,6 +752,6 @@
     resolveTarget, scoreCounts, deficits, countLines, buildSlotGroups, search, analyzeCombo,
     buildWishlist, solveSockets, rateBase, solve, checkAll,
     parseSkill, parseSocket, parseSlot, matchSkill, matchSocket, normalizeItem, parseImport, parseCSV, toCSV,
-    parseOcrText, ocrLineSkills,
+    parseOcrText, ocrSkillLine,
   };
 });

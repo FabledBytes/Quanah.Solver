@@ -325,7 +325,6 @@ details.raw pre { font: .74rem/1.4 var(--font-mono); white-space: pre-wrap; max-
       </div>
       <div class="settings">
         <button type="button" class="sync-pill off" id="sync-pill" data-act="goto" data-tab="data" hidden>GitHub sync off</button>
-        <label title="Uses M.ATT Enhancement instead of ATT Enhancement in every build"><input type="checkbox" id="set-mage"> I play a Magician (M.ATT)</label>
         <label>Own class line
           <select id="set-own"></select>
         </label>
@@ -627,7 +626,7 @@ const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 const LABEL = {
-  DL: 'Dim. Leap', WH: 'White Hole', REG: 'Registry', ATT: 'ATT Enh.', MATT: 'M.ATT Enh.',
+  DL: 'Dim. Leap', WH: 'White Hole', REG: 'Registry', ATT: 'ATT/M.ATT',
   CD: 'Crit Dmg', DMG: 'Damage', WAR: 'Warrior', MAG: 'Mage', ARC: 'Archer', THF: 'Thief', PIR: 'Pirate', OTHER: 'Other',
 };
 const STATUS_TEXT = { used: '', over: ' — over the gear cap, wasted', off: ' — not part of this build, wasted', junk: ' — not a useful skill', empty: '' };
@@ -789,10 +788,8 @@ const fmt = (n) => Number(n).toLocaleString('en-US');
 
 /* ---------------- Header settings ---------------- */
 function renderSettings() {
-  $('#set-mage').checked = !!state.settings.mage;
   $('#set-own').innerHTML = Q.CLASS_KEYS.map((k) => `<option value="${k}"${k === state.settings.ownClass ? ' selected' : ''}>${esc(Q.SKILL_BY_KEY[k].name)}</option>`).join('');
 }
-$('#set-mage').addEventListener('change', (e) => { state.settings.mage = e.target.checked; renderPresetList(); changed(); });
 $('#set-own').addEventListener('change', (e) => { state.settings.ownClass = e.target.value; renderPresetList(); changed(); });
 
 /* ---------------- Tabs ---------------- */
@@ -1389,15 +1386,17 @@ function addScanPieces(img, list) {
   }
 }
 
-const SCAN_CODES = 'DL = Dimensional Leap, WH = White Hole, REG = Registry, ATT = ATT Enhancement, MATT = M.ATT (Magic ATT) Enhancement, CD = Critical Damage, DMG = Damage, WAR = Warrior, MAG = Mage / Magician, ARC = Archer / Bowman, THF = Thief, PIR = Pirate, OTHER = any other Hologram skill, "" = no line or unreadable';
+const SCAN_CODES = 'DL = Dimensional Leap, WH = White Hole, REG = Registry, ATT = Attack Power & Magic ATT Enhancement, CD = Critical Damage (Enhancement), DMG = Damage, WAR = Warrior, MAG = Mage / Magician, ARC = Archer / Bowman, THF = Thief, PIR = Pirate, OTHER = any other Hologram skill, "" = no line or unreadable';
 function scanPrompt(n) {
   return `These ${n} image${n === 1 ? ' is a screenshot' : 's are screenshots'} from MapleStory, Event World: Quanah. They show tooltips of Libae's Supercharged Equipment armor. The armor slots are Hat, Top, Bottom, Gloves, Shoes and Cape. Each armor piece has up to 3 Hologram Skill lines and 3 jewel sockets.
+
+Skill lines are listed under the stats and above "Scroll Enhancement". Class lines look like "[Hologram] Bowman Attack Skill Level Lv. +1"; other skills may have no [Hologram] prefix, like "White Hole Lv. +1", and "[Hologram] Attack Power & Magic ATT Enhancement Skill Lv. +1" can wrap over two lines. Jewels are not in the text: they are the small colored drops drawn on the item icon, one per socket.
 
 For every armor piece you can see, report:
 - image: the 1-based number of the screenshot it appears in, in the order given
 - slot: Hat, Top, Bottom, Gloves, Shoes or Cape ("" if you cannot tell; an overall counts as Top, pants as Bottom, boots as Shoes)
 - lines: exactly 3 Hologram skill codes in the order shown. Codes: ${SCAN_CODES}
-- sockets: exactly 3 jewel sockets in order, each one of prismatic, red, green, gray, blue, purple, or "" when empty or not visible. A prismatic jewel is rainbow / multi-colored.
+- sockets: exactly 3 jewel sockets from the colored drops on the item icon, left to right, each one of prismatic, red, green, gray, blue, purple, or "" when there is no drop or you cannot tell. A prismatic jewel is rainbow / multi-colored.
 - confidence: "high" or "low"
 - note: a few words about anything unclear, else ""
 
@@ -1538,7 +1537,13 @@ function renderScan() {
 }
 function renderReview() {
   const box = $('#scan-review');
-  if (!scan.pieces.length) { box.hidden = true; box.innerHTML = ''; return; }
+  if (!scan.pieces.length) {
+    const raws0 = scan.images.filter((i) => i.raw);
+    box.hidden = !raws0.length;
+    box.innerHTML = raws0.length ? `<h2>No skill lines recognised</h2><p class="muted small">This is the text the reader saw. Add the piece by hand, or try a sharper or larger screenshot.</p>
+      <details class="raw" open style="margin-top:12px"><summary>Raw text that was read</summary>${raws0.map((i) => `<p class="small mono" style="margin-top:8px">Screenshot #${i.id}</p><pre>${esc(i.raw)}</pre>`).join('')}</details>` : '';
+    return;
+  }
   box.hidden = false;
   const n = scan.pieces.filter((p) => p.include).length;
   const rows = scan.pieces.map((p) => {

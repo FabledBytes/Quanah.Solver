@@ -31,11 +31,14 @@ test('every preset resolves to 18 lines with the expected prismatic count', () =
   }
 });
 
-test('mage toggle swaps ATT for M.ATT and own class is applied', () => {
+test('own class is applied and ATT / M.ATT are one skill', () => {
   const T = Q.resolveTarget(preset('own-class'), { mage: true, ownClass: 'THF' });
-  assert.equal(T.targets.MATT, 3);
-  assert.equal(T.targets.ATT, undefined);
+  assert.equal(T.targets.ATT, 3);
+  assert.equal(T.targets.MATT, undefined);
   assert.equal(T.targets.THF, 1);
+  assert.equal(Q.resolveTarget({ targets: { DL: 3, WH: 3, REG: 3, MATT: 3, CD: 3, DMG: 3 } }, {}).targets.ATT, 3);
+  assert.equal(Q.parseSkill('M.ATT Enhancement'), 'ATT');
+  assert.equal(Q.normalizeItem({ slot: 'Hat', lines: ['MATT', 'DL', ''] }, 1).lines[0], 'ATT');
 });
 
 test('invalid custom targets are reported', () => {
@@ -144,32 +147,94 @@ test('import parses CSV with names and aliases, and JSON round-trips', () => {
   assert.equal(json.settings.mage, true);
 });
 
-test('OCR line matching tolerates typos and ignores descriptions', () => {
-  assert.deepEqual(Q.ocrLineSkills('Dimensional Leap Lv. 1'), ['DL']);
-  assert.deepEqual(Q.ocrLineSkills('Dimensiona1 Lcap Lv.1'), ['DL']);
-  assert.deepEqual(Q.ocrLineSkills('Critical Damage'), ['CD']);
-  assert.deepEqual(Q.ocrLineSkills('Damage Lv.1'), ['DMG']);
-  assert.deepEqual(Q.ocrLineSkills('M.ATT Enhancement'), ['MATT']);
-  assert.deepEqual(Q.ocrLineSkills('ATT Enhancement'), ['ATT']);
-  assert.deepEqual(Q.ocrLineSkills('Whlte Hole'), ['WH']);
-  assert.deepEqual(Q.ocrLineSkills('Pirate'), ['PIR']);
-  assert.deepEqual(Q.ocrLineSkills('Increases Critical Damage dealt to bosses by 10%'), []);
-  assert.deepEqual(Q.ocrLineSkills('Image quality'), []);
+test('OCR skill lines in the real tooltip format', () => {
+  const k = (l) => { const r = Q.ocrSkillLine(l); return r && (r.skip ? 'skip' : r.key); };
+  assert.equal(k('[Hologram] Bowman Attack Skill Level Lv. +1'), 'ARC');
+  assert.equal(k('[Hologram] Warrior Attack Skill Level Ly. +1'), 'WAR');
+  assert.equal(k('mem [HOlOgram) Magician Attack Skill Ly. +1 |'), 'MAG');
+  assert.equal(k('[Hologram] Pirate Attack Skill Lv. +1'), 'PIR');
+  assert.equal(k('[Hologram] Critical Damage Enhancement Skill Lv. +1'), 'CD');
+  assert.equal(k('[Hologram] Attack Power & Magic ATT Enhancement'), 'ATT');
+  assert.equal(k('Skill Lv. +1'), 'skip');
+  assert.equal(k('Dimensional Leap Lv. +1'), 'DL');
+  assert.equal(k('White Hole Lv. +1'), 'WH');
+  assert.equal(k('Registry Lv. +1'), 'REG');
+  assert.equal(k('[Hologram] Something New Skill Lv. +1'), 'OTHER');
+  assert.equal(k('Required Level Ly. 160 i'), null);
+  assert.equal(k('Attack Power +6 |'), null);
+  assert.equal(k('Enemy DEF Ignored +5%'), null);
+  assert.equal(k('Scroll Enhancement None'), null);
 });
 
-test('OCR text becomes pieces with slots, split on new slot names', () => {
-  const text = [
-    "Libae's Supercharged Gloves", 'Type: Gloves', 'Hologram Skill', 'White Hole Lv.1', 'Registry Lv.1', 'Thief Lv.1',
-    'Some description text that goes on and on about nothing in particular',
-    "Libae's Supercharged Cape", 'Dimensional Leap Lv.1', 'Critlcal Damage Lv.1',
-  ].join('\n');
-  const p = Q.parseOcrText(text);
-  assert.equal(p.length, 2);
-  assert.equal(p[0].slot, 'Gloves');
-  assert.deepEqual(p[0].lines, ['WH', 'REG', 'THF']);
-  assert.equal(p[1].slot, 'Cape');
-  assert.deepEqual(p[1].lines, ['DL', 'CD', '']);
-  assert.ok(p[1].warnings.some((w) => w.includes('2 skill lines')));
+test('real OCR output of a Quanah tooltip becomes one Top piece', () => {
+  // Tesseract's output for a real "Libae's Supercharged Top (Pirate)" screenshot, misreads included.
+  const raw = `awww |
+Libae's Supercharged Top (Pirate)
+Heroic: Untradable
+Interactive: Untradahble
+Duration: 3/10/2027 00:00 UTC (Can't Extend)
+<) + 111,003 |
+=k Armor |!
+Top
+Required Joh Pirate :
+Required Level Ly. 160 i
+Set Effect Libae's Supercharged Equipment Set
+STR +103 (50 +8 +45) :
+DEX +73 (50 +8 +15)
+Max MP +2400 (0 +2400)
+Attack Power +6 |
+Defense +3898 (325 +73)
+quip Enemy DEF Ignored  +5%
+[Hologram] Bowman Attack Skill Level Lv. +1
+[Hologram] Warrior Attack Skill Level Ly. +1
+mem [HOlOgram) Magician Attack Skill Ly. +1 |
+M Potential : Unique
+= Max MP +10% i
+— " STR: +7% |
+180% + Invincible for +1 sec After Taking Damage \\`;
+  const p = Q.parseOcrText(raw);
+  assert.equal(p.length, 1);
+  assert.equal(p[0].slot, 'Top');
+  assert.deepEqual(p[0].lines, ['ARC', 'WAR', 'MAG']);
+  assert.deepEqual(p[0].warnings, []);
+});
+
+test('tooltips with unprefixed core skills and a wrapped ATT line', () => {
+  const wrapped = `Libae's Supercharged Top (Pirate)
+Armor
+Top
+Required Level Lv. 160
+Enemy DEF Ignored +5%
+[Hologram] Warrior Attack Skill Level Lv. +1
+[Hologram] Bowman Attack Skill Level Lv. +1
+[Hologram] Attack Power & Magic ATT Enhancement
+Skill Lv. +1
+Scroll Enhancement None`;
+  assert.deepEqual(Q.parseOcrText(wrapped)[0].lines, ['WAR', 'ARC', 'ATT']);
+  const mixed = `Libae's Supercharged Top (Pirate)
+Top
+Magic ATT +5 (0 +5)
+Defense +484 (325 +114 +45)
+[Hologram] Magician Attack Skill Lv. +1
+White Hole Lv. +1
+[Hologram] Bowman Attack Skill Level Lv. +1`;
+  assert.deepEqual(Q.parseOcrText(mixed)[0].lines, ['MAG', 'WH', 'ARC']);
+  const cape = `Libae's Supercharged Cape (Pirate)
+Armor
+Cape
+Attack Power +9
+Magic ATT +9
+[Hologram] Pirate Attack Skill Lv. +1
+[Hologram] Critical Damage Enhancement Skill Lv. +1
+[Hologram] Magician Attack Skill Lv. +1`;
+  const c = Q.parseOcrText(cape)[0];
+  assert.equal(c.slot, 'Cape');
+  assert.deepEqual(c.lines, ['PIR', 'CD', 'MAG']);
+  const leap = `Libae's Supercharged Top (Pirate)
+Dimensional Leap Lv. +1
+[Hologram] Bowman Attack Skill Level Lv. +1
+[Hologram] Pirate Attack Skill Lv. +1`;
+  assert.deepEqual(Q.parseOcrText(leap)[0].lines, ['DL', 'ARC', 'PIR']);
 });
 
 test('large inventory solves quickly', () => {

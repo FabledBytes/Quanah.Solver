@@ -1647,11 +1647,14 @@ document.addEventListener('paste', (e) => {
 // The token lives only in this browser's storage; it never goes into exports or the synced file.
 const SYNC_KEY = 'quanah-sync-v1';
 const TOKEN_KEY = 'quanah-gh-token';
-const SYNC_DEFAULTS = { repo: 'kevinvannieuwenhuizen/Quanah.Solver', branch: '', path: 'data/inventory.json', auto: true };
+const SYNC_DEFAULTS = { repo: 'FabledBytes/Quanah.Solver', branch: '', path: 'data/inventory.json', auto: true };
 const syncAvailable = !inFrame && typeof fetch === 'function';
 let sync = (() => {
   const base = Object.assign({}, SYNC_DEFAULTS, { sha: null, syncedAt: null, dirty: false });
-  try { return Object.assign(base, JSON.parse(localStorage.getItem(SYNC_KEY) || '{}')); } catch (e) { return base; }
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem(SYNC_KEY) || '{}'); } catch (e) { /* ignore */ }
+  if (/^kevinvannieuwenhuizen\/quanah\.solver$/i.test(saved.repo || '')) saved.repo = SYNC_DEFAULTS.repo; // account was renamed
+  return Object.assign(base, saved);
 })();
 let syncBusy = false, syncPhase = '', syncError = '', syncInfo = '', syncConflict = false, autoTimer = 0, lastCheck = 0, applyingRemote = false;
 function saveSync() { try { localStorage.setItem(SYNC_KEY, JSON.stringify(sync)); } catch (e) { /* ignore */ } }
@@ -1724,7 +1727,7 @@ function applyRemote(text) {
 function syncErrorText(e, during) {
   if (!e) return '';
   if (e.code === 'no_token') return 'Add a GitHub token first.';
-  if (e.code === 'bad_repo') return 'Write the repository as owner/name, for example kevinvannieuwenhuizen/Quanah.Solver.';
+  if (e.code === 'bad_repo') return 'Write the repository as owner/name, for example FabledBytes/Quanah.Solver.';
   if (e.code === 'network') return 'Could not reach GitHub. Check your internet connection and try again.';
   if (e.code === 'bad_file') return 'The file on GitHub is not a Quanah inventory export, so nothing was loaded.';
   if (e.code === 'sample') return 'This is still the sample inventory. Clear it or add your own pieces before saving to GitHub.';

@@ -22,7 +22,7 @@ Open `index.html` in a browser. No build step and no install. Everything runs lo
 
 On the **Import / Export** tab, *Sync with GitHub* stores your fodder, bases and settings in `data/inventory.json` in this repository, so every machine you open the app on shares the same data.
 
-1. Open `index.html` from a clone or download of this repo (or from GitHub Pages).
+1. Open the app on GitHub Pages (https://fabledbytes.github.io/Quanah.Solver/ once Pages is on), or `index.html` from a clone or download of this repo.
 2. Create a [fine-grained token](https://github.com/settings/personal-access-tokens/new): *Only select repositories* → this repo, *Contents: Read and write*, nothing else.
 3. Paste it in the token field. Do this once per machine; the token stays in that browser only and is never exported or synced.
 

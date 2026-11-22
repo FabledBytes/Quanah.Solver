@@ -1,0 +1,193 @@
+{
+ "app": "quanah-hologram-solver",
+ "version": 2,
+ "savedAt": "2026-11-22T14:01:45.106Z",
+ "nextId": 11,
+ "settings": {
+  "mage": false,
+  "ownClass": "PIR",
+  "statColors": [
+   "red",
+   "green",
+   "gray"
+  ],
+  "presetId": "custom",
+  "custom": {
+   "targets": {
+    "DL": 3,
+    "WH": 3,
+    "REG": 3,
+    "ATT": 3,
+    "CD": 1,
+    "WAR": 1,
+    "MAG": 1,
+    "ARC": 1,
+    "THF": 1,
+    "PIR": 1
+   },
+   "anyClass": 0
+  }
+ },
+ "items": [
+  {
+   "id": 1,
+   "kind": "lines",
+   "slot": "Top",
+   "lines": [
+    "ARC",
+    "WAR",
+    "MAG"
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 2,
+   "kind": "lines",
+   "slot": "Top",
+   "lines": [
+    "WAR",
+    "ARC",
+    "ATT"
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 3,
+   "kind": "lines",
+   "slot": "Top",
+   "lines": [
+    "WAR",
+    "CD",
+    "PIR"
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 4,
+   "kind": "lines",
+   "slot": "Top",
+   "lines": [
+    "DL",
+    "ARC",
+    "PIR"
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 5,
+   "kind": "lines",
+   "slot": "Top",
+   "lines": [
+    "MAG",
+    "WH",
+    "ARC"
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 6,
+   "kind": "lines",
+   "slot": "Hat",
+   "lines": [
+    "WAR",
+    "DL",
+    "REG"
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 7,
+   "kind": "lines",
+   "slot": "Hat",
+   "lines": [
+    "REG",
+    "ARC",
+    "DL"
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 8,
+   "kind": "lines",
+   "slot": "Hat",
+   "lines": [
+    "WH",
+    "OTHER",
+    ""
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 9,
+   "kind": "lines",
+   "slot": "Hat",
+   "lines": [
+    "WAR",
+    "CD",
+    "PIR"
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 10,
+   "kind": "lines",
+   "slot": "Hat",
+   "lines": [
+    "MAG",
+    "REG",
+    "DMG"
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  }
+ ]
+}

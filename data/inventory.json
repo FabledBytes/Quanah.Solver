@@ -1,8 +1,8 @@
 {
  "app": "quanah-hologram-solver",
  "version": 2,
- "savedAt": "2026-11-22T14:04:29.712Z",
- "nextId": 33,
+ "savedAt": "2026-11-22T14:06:11.183Z",
+ "nextId": 40,
  "settings": {
   "mage": false,
   "ownClass": "PIR",
@@ -533,6 +533,118 @@
     "WH",
     "REG",
     "ARC"
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 33,
+   "kind": "lines",
+   "slot": "Top",
+   "lines": [
+    "REG",
+    "PIR",
+    "ATT"
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 34,
+   "kind": "lines",
+   "slot": "Hat",
+   "lines": [
+    "CD",
+    "REG",
+    "WH"
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 35,
+   "kind": "lines",
+   "slot": "Cape",
+   "lines": [
+    "DL",
+    "ATT",
+    "CD"
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 36,
+   "kind": "lines",
+   "slot": "Top",
+   "lines": [
+    "ATT",
+    "WH",
+    ""
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 37,
+   "kind": "lines",
+   "slot": "Gloves",
+   "lines": [
+    "ARC",
+    "THF",
+    "WAR"
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 38,
+   "kind": "lines",
+   "slot": "Bottom",
+   "lines": [
+    "DL",
+    "ATT",
+    ""
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 39,
+   "kind": "lines",
+   "slot": "Shoes",
+   "lines": [
+    "REG",
+    "ATT",
+    "MAG"
    ],
    "sockets": [
     "",

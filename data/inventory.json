@@ -1,8 +1,8 @@
 {
  "app": "quanah-hologram-solver",
  "version": 2,
- "savedAt": "2026-11-22T15:00:57.815Z",
- "nextId": 48,
+ "savedAt": "2026-11-22T15:02:58.424Z",
+ "nextId": 49,
  "settings": {
   "mage": false,
   "ownClass": "PIR",
@@ -725,6 +725,22 @@
     "PIR",
     "CD",
     "ATT"
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 48,
+   "kind": "lines",
+   "slot": "Top",
+   "lines": [
+    "ARC",
+    "CD",
+    "WH"
    ],
    "sockets": [
     "",

@@ -1,7 +1,7 @@
 {
  "app": "quanah-hologram-solver",
  "version": 2,
- "savedAt": "2026-11-23T13:21:15.211Z",
+ "savedAt": "2026-11-23T13:27:27.237Z",
  "nextId": 87,
  "settings": {
   "mage": false,
@@ -18,9 +18,11 @@
     "WH": 3,
     "REG": 3,
     "ATT": 3,
-    "CD": 3
+    "CD": 3,
+    "DMG": 2,
+    "PIR": 1
    },
-   "anyClass": 3
+   "anyClass": 0
   }
  },
  "items": [

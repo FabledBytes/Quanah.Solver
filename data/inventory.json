@@ -1,8 +1,8 @@
 {
  "app": "quanah-hologram-solver",
  "version": 2,
- "savedAt": "2026-11-23T14:36:36.295Z",
- "nextId": 93,
+ "savedAt": "2026-11-23T14:37:00.725Z",
+ "nextId": 94,
  "settings": {
   "mage": false,
   "ownClass": "PIR",
@@ -1362,6 +1362,22 @@
     "WH",
     "PIR",
     "DL"
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 93,
+   "kind": "lines",
+   "slot": "Shoes",
+   "lines": [
+    "DL",
+    "WH",
+    "REG"
    ],
    "sockets": [
     "",

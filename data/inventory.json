@@ -1,8 +1,8 @@
 {
  "app": "quanah-hologram-solver",
  "version": 2,
- "savedAt": "2026-11-23T14:34:43.105Z",
- "nextId": 92,
+ "savedAt": "2026-11-23T14:36:36.295Z",
+ "nextId": 93,
  "settings": {
   "mage": false,
   "ownClass": "PIR",
@@ -11,7 +11,7 @@
    "green",
    "gray"
   ],
-  "presetId": "core",
+  "presetId": "chinese",
   "custom": {
    "targets": {
     "DL": 3,
@@ -1346,6 +1346,22 @@
     "DMG",
     "WH",
     "REG"
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 92,
+   "kind": "lines",
+   "slot": "Hat",
+   "lines": [
+    "WH",
+    "PIR",
+    "DL"
    ],
    "sockets": [
     "",

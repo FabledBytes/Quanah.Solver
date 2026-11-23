@@ -746,7 +746,7 @@ function run(fn, ...args) {
 
 /* ---------------- Helpers ---------------- */
 function presetDef(id) {
-  if (id === 'custom') return { id: 'custom', name: 'Custom build', tagline: 'Your own 18 lines', targets: state.settings.custom.targets, anyClass: state.settings.custom.anyClass };
+  if (id === 'custom') return { id: 'custom', name: 'Custom build', tagline: 'Your own target lines', targets: state.settings.custom.targets, anyClass: state.settings.custom.anyClass };
   return Q.PRESETS.find((p) => p.id === id) || Q.PRESETS[0];
 }
 function allDefs() {
@@ -962,7 +962,7 @@ function renderPresetList() {
   const defs = [...Q.PRESETS, presetDef('custom')];
   $('#preset-list').innerHTML = defs.map((d) => {
     const T = Q.resolveTarget(d, state.settings);
-    const p = T.valid ? `${T.prismatic} Prismatic · ${T.stat} stat` : 'Not 18 lines yet';
+    const p = T.valid ? `${T.free ? `${T.total} lines · ` : ''}${T.prismatic} Prismatic · ${T.stat} stat` : 'Not valid yet';
     return `<button type="button" class="preset" data-preset="${d.id}" aria-pressed="${d.id === state.settings.presetId}"><b>${esc(presetTitle(d))}</b><span>${esc(d.tagline)}</span><span class="p">${p}</span></button>`;
   }).join('');
 }
@@ -992,7 +992,7 @@ function updateCustomSum() {
   const T = Q.resolveTarget(presetDef('custom'), state.settings);
   const el = $('#custom-sum');
   if (!el) return;
-  el.innerHTML = T.valid ? `<span style="color:var(--ok)">18 / 18 lines · ${T.prismatic} Prismatic sockets needed</span>` : `<span class="errors">${T.errors.map(esc).join(' ')}</span>`;
+  el.innerHTML = T.valid ? `<span style="color:var(--ok)">${T.total} / 18 lines${T.free ? ` (the other ${T.free} don't matter)` : ''} · ${T.prismatic} Prismatic sockets needed</span>` : `<span class="errors">${T.errors.map(esc).join(' ')}</span>`;
 }
 let customTimer = 0;
 $('#custom-editor').addEventListener('input', (e) => {
@@ -1020,6 +1020,7 @@ function renderTarget() {
   if (!T.valid) { $('#target-strip').innerHTML = `<span class="errors">${T.errors.map(esc).join(' ')}</span>`; return; }
   const parts = Object.entries(T.targets).map(([k, n]) => countChip(k, n));
   if (T.anyClass) parts.push(`<span class="chip g-class" title="Distinct class lines">Any class <span class="n">×${T.anyClass}</span></span>`);
+  if (T.free) parts.push(`<span class="chip g-any" title="These lines don't count for this build">any line <span class="n">×${T.free}</span></span>`);
   $('#target-strip').innerHTML = `<span class="eyebrow">Target lines</span><span class="chips">${parts.join('')}</span>
     <span class="sock-need"><span class="jewels">${'<i class="jw jw-prismatic"></i>'.repeat(T.prismatic)}</span> ${T.prismatic} Prismatic + ${T.stat} stat sockets</span>`;
 }
@@ -1048,7 +1049,7 @@ function solveNow(force) {
 function comboCard(c, total, sockets) {
   const a = c.analysis;
   const fixSlots = new Set(a.fixes.filter((f) => f.reach === total).map((f) => f.slotIndex));
-  const label = c.score === total ? 'Exact 18/18 set' : `${total - c.score} line${total - c.score === 1 ? '' : 's'} short`;
+  const label = c.score === total ? `Complete set (${total}/${total})` : `${total - c.score} line${total - c.score === 1 ? '' : 's'} short`;
   const cells = c.slots.map((s, i) => {
     const alt = s.itemIds.length > 1 ? `<span class="alt" title="Interchangeable pieces: ${s.itemIds.map((x) => '#' + x).join(', ')}">or ${s.itemIds.slice(1, 4).map((x) => '#' + x).join(', ')}${s.itemIds.length > 4 ? '…' : ''}</span>` : '';
     const head = s.empty ? `<b>${s.slot}</b><span class="alt">none owned</span>` : `<b>${s.slot}</b><span class="mono small">#${s.itemIds[0]}</span>${alt}`;
@@ -1059,7 +1060,7 @@ function comboCard(c, total, sockets) {
     const m = a.missing;
     const missing = needChips(m.keys, m.anyClass, m.classOptions, 0);
     const best = a.fixes.filter((f) => f.reach === a.fixes[0].reach).slice(0, 3);
-    const fixes = best.map((f) => `<div class="row"><span class="label">${f.reach === total ? 'Completes' : `Reaches ${f.reach}/18`}</span> Replace <b>${Q.SLOTS[f.slotIndex]}</b> with ${needChips(f.need, f.anyClass, f.classOptions, f.free)}</div>`).join('');
+    const fixes = best.map((f) => `<div class="row"><span class="label">${f.reach === total ? 'Completes' : `Reaches ${f.reach}/${total}`}</span> Replace <b>${Q.SLOTS[f.slotIndex]}</b> with ${needChips(f.need, f.anyClass, f.classOptions, f.free)}</div>`).join('');
     foot = `<div class="combo-foot"><div class="row"><span class="label">Missing</span>${missing}</div>${fixes}</div>`;
   } else if (sockets && sockets.anyData) {
     const moves = c.slots.map((s, i) => {
@@ -1078,8 +1079,8 @@ function wishlistPanel(r) {
     return `<li><div class="w-head"><b>${e.slot}</b><span class="muted small num">completes ${fmt(e.variants)} set${e.variants === 1 ? '' : 's'}</span></div>
       <div class="chips">${needChips(e.need, e.anyClass, e.classOptions, e.free)}</div>
       <details><summary>Example set it completes</summary><p>${esc(ex)}</p></details></li>`;
-  }).join('')}</ol>` : `<p class="muted small">No single piece completes an 18/18 yet. Every combo is still 4 or more lines short, so keep farming line fodder for the slots marked in the partial matches.</p>`;
-  return `<aside class="panel wish"><div class="panel-head" style="margin-bottom:6px"><div><h2>One piece away</h2><p class="muted small">Pieces that would finish an 18/18 with what you already own. Farm these first.</p></div></div>${body}</aside>`;
+  }).join('')}</ol>` : `<p class="muted small">No single piece completes this build yet. Every combo is still 4 or more lines short, so keep farming line fodder for the slots marked in the partial matches.</p>`;
+  return `<aside class="panel wish"><div class="panel-head" style="margin-bottom:6px"><div><h2>One piece away</h2><p class="muted small">Pieces that would complete this build with what you already own. Farm these first.</p></div></div>${body}</aside>`;
 }
 function renderSolve(r) {
   const out = $('#solve-out');
@@ -1090,7 +1091,7 @@ function renderSolve(r) {
   const sock = r.sockets;
   const stats = `<div class="stats">
     <div class="stat${r.best === total ? ' good' : ''}"><span class="eyebrow">Best match</span><span class="v">${r.best}<small>/${total}</small></span></div>
-    <div class="stat${r.exactVariants ? ' good' : ''}"><span class="eyebrow">Exact 18/18 sets</span><span class="v">${fmt(r.exactVariants)}${r.truncated ? '<small>+</small>' : ''}</span></div>
+    <div class="stat${r.exactVariants ? ' good' : ''}"><span class="eyebrow">Complete sets</span><span class="v">${fmt(r.exactVariants)}${r.truncated ? '<small>+</small>' : ''}</span></div>
     <div class="stat"><span class="eyebrow">One piece away</span><span class="v">${r.wishlist ? fmt(r.wishlist.entries.length) : '–'}<small> pieces</small></span></div>
     <div class="stat"><span class="eyebrow">Socket bases</span><span class="v">${sock.anyData ? sock.score : '–'}<small>/18</small></span><span class="small muted">${sock.anyData ? `${sock.prismatic}/${sock.prismaticNeeded} Prismatic · ${sock.stat}/${sock.statNeeded} stat` : 'No sockets entered'}</span></div>
   </div>`;
@@ -1098,7 +1099,7 @@ function renderSolve(r) {
     out.innerHTML = `<div class="panel empty-state"><h3>Your inventory is empty</h3><p>Add pieces on the Inventory tab and the solver will run here.</p><button class="btn" data-act="goto" data-tab="inventory">Go to inventory</button></div>`;
     return;
   }
-  const head = exacts.length ? `<div class="row" style="justify-content:space-between"><h2>Exact 18/18 sets</h2><span class="muted small">${exacts.length < r.combos.length ? 'Closest partial matches follow below.' : ''}</span></div>` : `<h2>Closest partial matches</h2>`;
+  const head = exacts.length ? `<div class="row" style="justify-content:space-between"><h2>Complete sets</h2><span class="muted small">${exacts.length < r.combos.length ? 'Closest partial matches follow below.' : ''}</span></div>` : `<h2>Closest partial matches</h2>`;
   const legend = `<div class="legend"><span>${chip('DL')} counts</span><span>${chip('DL', 'over')} over cap</span><span>${chip('DMG', 'off')} not in build</span><span>${chip('')} no piece</span><span><span class="chip fix-swatch">highlighted</span> slot one piece can complete</span></div>`;
   const more = r.combos.length > showCount ? `<button class="btn" data-act="more">Show more (${r.combos.length - showCount} left)</button>` : '';
   out.innerHTML = `<div class="view">${stats}<div class="results"><div class="combos">${head}${legend}${shown.map((c) => comboCard(c, total, r.sockets)).join('')}${more}
@@ -1123,7 +1124,7 @@ function compareNow(force) {
 function renderCompare(res, defs) {
   if (!state.items.length) { $('#compare-out').innerHTML = `<div class="empty-state"><p>Add pieces first, then check which build is closest.</p></div>`; return; }
   const rows = res.map((r, i) => ({ r, def: defs[i] })).filter((x) => !x.r.error);
-  rows.sort((a, b) => (b.r.best - a.r.best) || (b.r.exactVariants - a.r.exactVariants) || ((b.r.wishlist ? b.r.wishlist.entries.length : 0) - (a.r.wishlist ? a.r.wishlist.entries.length : 0)) || (a.r.target.prismatic - b.r.target.prismatic));
+  rows.sort((a, b) => (b.r.best / b.r.target.total - a.r.best / a.r.target.total) || (b.r.best - a.r.best) || (b.r.exactVariants - a.r.exactVariants) || ((b.r.wishlist ? b.r.wishlist.entries.length : 0) - (a.r.wishlist ? a.r.wishlist.entries.length : 0)) || (a.r.target.prismatic - b.r.target.prismatic));
   const html = rows.map(({ r, def }, i) => {
     const total = r.target.total;
     const c = r.combos[0];
@@ -1132,7 +1133,7 @@ function renderCompare(res, defs) {
     const sock = r.sockets;
     return `<tr class="${i === 0 ? 'leader' : ''}">
       <td><b>${esc(presetTitle(def))}</b>${i === 0 ? '<span class="tag">Closest</span>' : ''}<div class="muted small">${esc(def.tagline)}</div></td>
-      <td><span class="num"><b>${r.best}</b>/18</span><div class="bar${r.best === total ? ' full' : ''}"><i style="width:${(r.best / total) * 100}%"></i></div></td>
+      <td><span class="num"><b>${r.best}</b>/${total}</span><div class="bar${r.best === total ? ' full' : ''}"><i style="width:${(r.best / total) * 100}%"></i></div></td>
       <td class="num">${fmt(r.exactVariants)}</td>
       <td class="num">${w}</td>
       <td><span class="num">${r.target.prismatic}</span> <span class="jewels">${'<i class="jw jw-prismatic"></i>'.repeat(r.target.prismatic)}</span></td>

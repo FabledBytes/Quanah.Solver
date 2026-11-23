@@ -22,11 +22,11 @@ const planted = [
 ];
 
 test('every preset resolves to 18 lines with the expected prismatic count', () => {
-  const expected = { traditional: 4, eu: 6, chinese: 5, 'own-class': 5 };
+  const expected = { traditional: 4, eu: 6, chinese: 5, 'own-class': 5, core: 4 };
   for (const p of Q.PRESETS) {
     const T = Q.resolveTarget(p, {});
     assert.equal(T.valid, true, `${p.id}: ${T.errors}`);
-    assert.equal(T.total, 18);
+    assert.equal(T.total, p.id === 'core' ? 13 : 18);
     assert.equal(T.prismatic, expected[p.id], p.id);
   }
 });
@@ -44,7 +44,8 @@ test('own class is applied and ATT / M.ATT are one skill', () => {
 test('invalid custom targets are reported', () => {
   const T = Q.resolveTarget({ targets: { DL: 4, WAR: 2 } }, {});
   assert.equal(T.valid, false);
-  assert.ok(T.errors.length >= 3);
+  assert.ok(T.errors.length >= 2);
+  assert.equal(Q.resolveTarget({ targets: { DL: 3, WH: 3, REG: 3, ATT: 3, CD: 3, DMG: 3, WAR: 1 } }, {}).valid, false);
 });
 
 test('finds the planted traditional 18/18', () => {
@@ -257,6 +258,25 @@ test('one piece never carries the same skill twice', () => {
   // Replacing the Hat (which holds one White Hole) can bring a second one: Hat with WH + WAR + something.
   const hat = a.fixes.find((f) => Q.SLOTS[f.slotIndex] === 'Hat');
   assert.ok(!hat || !Q.hasDuplicateLines(hat.need));
+});
+
+test('Core 13 counts only its 13 lines; the rest is free', () => {
+  const T = Q.resolveTarget(preset('core'), {});
+  assert.equal(T.valid, true);
+  assert.equal(T.total, 13);
+  assert.equal(T.free, 5);
+  assert.equal(T.prismatic, 4);
+  const inv = [
+    item('Hat', ['DL', 'WH', 'OTHER']), item('Top', ['REG', 'ATT', 'DMG']), item('Bottom', ['DL', 'REG', 'CD']),
+    item('Gloves', ['WH', 'ATT', 'OTHER']), item('Shoes', ['DL', 'ATT', 'WAR']), item('Cape', ['WH', 'REG', 'PIR']),
+  ];
+  const r = Q.solve(inv, preset('core'), {});
+  assert.equal(r.best, 13);
+  assert.equal(r.exactCount, 1);
+  inv[3] = item('Gloves', ['WH', 'ARC', 'OTHER']);
+  const r2 = Q.solve(inv, preset('core'), {});
+  assert.equal(r2.best, 12);
+  assert.ok(r2.wishlist.entries.some((e) => e.slot === 'Gloves' && e.need.join() === 'ATT,WH' && e.free === 1));
 });
 
 test('large inventory solves quickly', () => {

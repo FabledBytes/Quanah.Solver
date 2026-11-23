@@ -73,6 +73,10 @@
       targets: { DL: 3, WH: 3, REG: 3, '@ATT': 3, CD: 3 }, anyClass: 3,
     },
     {
+      id: 'core', name: 'Core 13', tagline: 'Only the core lines + Crit Dmg; the other 5 lines don\'t matter',
+      targets: { DL: 3, WH: 3, REG: 3, '@ATT': 3, CD: 1 },
+    },
+    {
       id: 'own-class', name: 'Class-Specific', tagline: 'Damage ×2 + your own class line (Shade: Pirate)',
       targets: { DL: 3, WH: 3, REG: 3, '@ATT': 3, CD: 3, DMG: 2, '@OWN': 1 },
     },
@@ -103,13 +107,15 @@
       errors.push(`"Any class" asks for ${anyClass} lines but only ${freeClasses} class skills are not already targeted.`);
     }
     const total = counts.reduce((a, b) => a + b, 0) + anyClass;
-    if (total !== TOTAL_LINES) errors.push(`Targets add up to ${total}; they must add up to ${TOTAL_LINES}.`);
+    // Fewer than 18 is allowed: the remaining lines simply don't matter for this build.
+    if (total > TOTAL_LINES) errors.push(`Targets add up to ${total}; a set only has ${TOTAL_LINES} lines.`);
+    if (total < 1) errors.push('Pick at least one target line.');
     const targets = {};
     SCORED.forEach((s, i) => { if (counts[i]) targets[s.key] = counts[i]; });
     const prismatic = counts.filter((c) => c === 3).length;
     return {
       id: def && def.id, name: def && def.name, counts, anyClass, total, targets,
-      prismatic, stat: TOTAL_LINES - prismatic, errors, valid: errors.length === 0,
+      prismatic, stat: TOTAL_LINES - prismatic, free: Math.max(0, TOTAL_LINES - total), errors, valid: errors.length === 0,
     };
   }
 

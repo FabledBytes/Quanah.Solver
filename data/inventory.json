@@ -1,8 +1,8 @@
 {
  "app": "quanah-hologram-solver",
  "version": 2,
- "savedAt": "2026-11-23T10:25:28.955Z",
- "nextId": 83,
+ "savedAt": "2026-11-23T12:41:43.113Z",
+ "nextId": 84,
  "settings": {
   "mage": false,
   "ownClass": "PIR",
@@ -1220,6 +1220,22 @@
    "lines": [
     "PIR",
     "DMG",
+    "CD"
+   ],
+   "sockets": [
+    "",
+    "",
+    ""
+   ],
+   "note": ""
+  },
+  {
+   "id": 83,
+   "kind": "lines",
+   "slot": "Gloves",
+   "lines": [
+    "DMG",
+    "WAR",
     "CD"
    ],
    "sockets": [
